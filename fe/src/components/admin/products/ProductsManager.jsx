@@ -12,6 +12,7 @@ import { mediaCount } from "@/lib/media-count";
 import { cn } from "@/lib/utils";
 import {
   describeError,
+  discardJob,
   dismissJob,
   revalidateSite,
   saveProductInBackground,
@@ -19,10 +20,13 @@ import {
 } from "./jobs";
 import { ProductEditor } from "./ProductEditor";
 
-/** Ảnh bìa: tệp đầu tiên có ảnh (ảnh, hoặc ảnh đại diện video). */
+/** Ảnh bìa: ảnh bìa chọn riêng → ảnh đầu tiên trong thư viện → ảnh đại diện video (khớp toView). */
+const coverItem = (p) =>
+  p.cover ?? p.media?.find((x) => x.type === "image") ?? p.media?.find((x) => x.poster) ?? null;
 const coverOf = (p) => {
-  const m = p.media?.find((x) => x.type === "image" || x.poster);
-  return m ? cdn(m.type === "image" ? m.url : m.poster) : null;
+  const m = coverItem(p);
+  // Thẻ 3:4 rộng ~360px → bản ~800px (đủ nét Retina) thay vì ảnh gốc
+  return m ? cdn(m.type === "image" ? m.url : m.poster, 800) : null;
 };
 
 /**
@@ -45,6 +49,12 @@ export function ProductsManager() {
     setLoading(true);
     setTick((t) => t + 1);
   }, []);
+
+  // Việc lưu được TẢI TIẾP sau khi tải lại trang (UploadResumer) xong → làm mới danh sách
+  useEffect(() => {
+    window.addEventListener("tdm:product-saved", load);
+    return () => window.removeEventListener("tdm:product-saved", load);
+  }, [load]);
 
   useEffect(() => {
     let alive = true;
@@ -87,6 +97,8 @@ export function ProductsManager() {
   };
 
   const submit = (draft) => {
+    // Thử lại một lần lưu lỗi: giữ mốc bắt đầu cũ → nhận ra sản phẩm đã tạo xong (mất phản hồi), không tạo trùng
+    if (editor?.startedAt) draft.startedAt = editor.startedAt;
     setEditor(null);
     saveProductInBackground(draft, { onDone: () => load() });
   };
@@ -261,8 +273,8 @@ export function ProductsManager() {
                     <button
                       type="button"
                       onClick={() => {
-                        dismissJob(j.id);
-                        setEditor({ initial: j.draft });
+                        discardJob(j.id);
+                        setEditor({ initial: j.draft, startedAt: j.draft.startedAt });
                       }}
                       className="rounded-full bg-navy-950 px-4 py-2 text-xs font-semibold text-white"
                     >
@@ -270,7 +282,7 @@ export function ProductsManager() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => dismissJob(j.id)}
+                      onClick={() => discardJob(j.id)}
                       className="rounded-full px-4 py-2 text-xs font-semibold text-ink-soft ring-1 ring-ink/10 hover:text-ink"
                     >
                       Bỏ qua
@@ -295,12 +307,14 @@ export function ProductsManager() {
               {/* Cùng khung 3:4 với thẻ ngoài website → phần ảnh bị cắt ở đây giống hệt ngoài web */}
               <div className="relative aspect-3/4 overflow-hidden bg-navy-900">
                 {coverOf(p) && (
-                  <span className="absolute inset-0" style={zoomStyle(p.media?.[0])}>
+                  <span className="absolute inset-0" style={zoomStyle(coverItem(p))}>
                     {/* eslint-disable-next-line @next/next/no-img-element -- ảnh bìa từ Cloudinary / website */}
                     <img
                       src={coverOf(p)}
+                      loading="lazy"
+                      decoding="async"
                       alt={p.title}
-                      style={{ objectPosition: p.media?.[0]?.pos }}
+                      style={{ objectPosition: coverItem(p)?.pos }}
                       className={cn(
                         "size-full object-cover transition duration-700 group-hover:scale-105",
                         !p.published && "grayscale",
@@ -390,12 +404,7 @@ export function ProductsManager() {
       )}
 
       {editor && (
-        <ProductEditor
-          initial={editor.initial}
-
-          onSubmit={submit}
-          onClose={() => setEditor(null)}
-        />
+        <ProductEditor initial={editor.initial} onSubmit={submit} onClose={() => setEditor(null)} />
       )}
 
       <ConfirmDialog

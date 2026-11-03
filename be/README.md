@@ -82,7 +82,7 @@ Import nội bộ dùng alias của Node (`"imports"` trong package.json): `#con
 | `MONGODB_URI`, `MONGODB_DB_NAME`                                       | Chuỗi kết nối & tên database                          |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Cloudinary Console → Settings → API Keys              |
 | `CLOUDINARY_FOLDER`                                                    | Thư mục gốc trên Cloudinary (mặc định `tranduymedia`) |
-| `UPLOAD_MAX_IMAGE_MB`, `UPLOAD_MAX_VIDEO_MB`                           | Giới hạn dung lượng (mặc định 10MB / 200MB)           |
+| `UPLOAD_MAX_IMAGE_MB`, `UPLOAD_MAX_VIDEO_MB`                           | Giới hạn dung lượng (mặc định 10MB / 100MB — khớp gói Cloudinary miễn phí; nâng gói thì sửa cả `NEXT_PUBLIC_UPLOAD_MAX_VIDEO_MB` ở fe) |
 | `CORS_ORIGINS`                                                         | Origin frontend được phép gọi API                     |
 
 Ở `NODE_ENV=production`, thiếu MongoDB / Cloudinary key → app dừng ngay khi khởi động.

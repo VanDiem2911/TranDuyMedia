@@ -26,7 +26,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:products": "node --env-file-if-exists=.env scripts/seed-products.js",
-    "media:showcase": "node --env-file-if-exists=.env scripts/import-showcase.js"
+    "media:showcase": "node --env-file-if-exists=.env scripts/import-showcase.js",
+    "media:proxies": "node --env-file-if-exists=.env scripts/video-proxies.js"
   },
   "engines": {
     "node": ">=22.9.0"

@@ -26,7 +26,12 @@ const mediaItem = z.object({
   width: z.number().int().positive().nullish(),
   height: z.number().int().positive().nullish(),
   duration: z.number().nonnegative().nullish(),
+  frames: z.array(httpsUrl).max(4).optional(),
   alt: z.string().trim().max(300).optional().default(""),
+});
+
+const imageItem = mediaItem.extend({
+  type: z.literal("image", "Ảnh đại diện / ảnh nổi bật phải là ảnh"),
 });
 
 const text = (label, max, min = 0) =>
@@ -56,12 +61,25 @@ const base = {
     .array(mediaItem)
     .min(1, "Cần ít nhất 1 ảnh hoặc video")
     .max(60, "Mỗi sản phẩm chỉ chứa tối đa 60 ảnh và video"),
+  // Ảnh đại diện (cover — thẻ sản phẩm) + ảnh nổi bật chọn RIÊNG, độc lập với nhau và với thư viện.
+  // Bỏ trống → website tự lấy từ thư viện (ảnh, hoặc ảnh đại diện video nếu chỉ có video).
+  cover: imageItem.nullable().default(null),
+  featured: z.array(imageItem).max(3, "Tối đa 3 ảnh nổi bật").default([]),
   published: z.boolean().default(true),
 };
 
 export const createProductSchema = z.object(base);
+// Cập nhật một phần: BỎ giá trị mặc định — trường không gửi lên phải giữ nguyên trong DB
+// (vd. bấm ẩn/hiện chỉ gửi { published } không được xoá trắng mô tả, bối cảnh, ảnh bìa…)
 export const updateProductSchema = z
-  .object(Object.fromEntries(Object.entries(base).map(([k, v]) => [k, v.optional()])))
+  .object(
+    Object.fromEntries(
+      Object.entries(base).map(([k, v]) => [
+        k,
+        (v instanceof z.ZodDefault ? v.unwrap() : v).optional(),
+      ]),
+    ),
+  )
   .refine((v) => Object.keys(v).length > 0, "Không có thay đổi nào");
 
 export const productIdSchema = z.object({ id: objectId });

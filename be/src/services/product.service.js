@@ -1,5 +1,6 @@
 import { logger } from "#config/logger.js";
 import { productRepository } from "#repositories/product.repository.js";
+import { MediaService, mediaService } from "#services/media.service.js";
 import { ApiError } from "#utils/api-error.js";
 
 /** "Bộ ảnh Giáng sinh!" → "bo-anh-giang-sinh" */
@@ -13,6 +14,21 @@ export const slugify = (s) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 100) || "san-pham";
+
+/** Mọi tệp trên kho Cloudinary mà sản phẩm đang dùng → Map<public_id, "image" | "video">. */
+export function assetsOf(p) {
+  const out = new Map();
+  const add = (url, type) => {
+    const id = MediaService.publicIdOf(url);
+    if (id) out.set(id, type);
+  };
+  for (const m of [...(p?.media ?? []), p?.cover, ...(p?.featured ?? [])].filter(Boolean)) {
+    add(m.url, m.type === "video" ? "video" : "image");
+    add(m.poster, "image");
+    for (const f of m.frames ?? []) add(f, "image");
+  }
+  return out;
+}
 
 /** TẦNG SERVICE — sản phẩm đã thực hiện. */
 export class ProductService {
@@ -55,12 +71,33 @@ export class ProductService {
   }
 
   async update(id, input) {
-    await this.getById(id);
+    const before = await this.getById(id);
     const patch = { ...input };
     if (input.slug) patch.slug = await this.#uniqueSlug(input.slug, id);
     const product = await this.repo.update(id, patch);
     if (!product) throw ApiError.notFound("Sản phẩm không còn tồn tại hoặc đã bị xoá");
+    this.#purgeRemoved(before, product); // chạy nền, không làm chậm việc lưu
     return product;
+  }
+
+  /**
+   * Tệp vừa bị gỡ khỏi sản phẩm (ảnh / video trong thư viện, ảnh đại diện, ảnh nổi bật, ảnh đại diện &
+   * cảnh phụ của video) → xoá khỏi Cloudinary để không để lại tệp thừa. Giữ lại tệp mà sản phẩm khác
+   * (kể cả sản phẩm đã xoá còn khôi phục được) vẫn đang dùng.
+   */
+  async #purgeRemoved(before, after) {
+    try {
+      const removed = assetsOf(before);
+      for (const id of assetsOf(after).keys()) removed.delete(id);
+      if (!removed.size) return;
+      const others = await this.repo.model
+        .find({ _id: { $ne: before.id ?? before._id } }, { media: 1, cover: 1, featured: 1 })
+        .lean();
+      for (const o of others) for (const id of assetsOf(o).keys()) removed.delete(id);
+      await mediaService.purge(removed);
+    } catch (err) {
+      logger.warn("Chưa dọn được tệp cũ của sản phẩm", { id: before.id, message: err?.message });
+    }
   }
 
   /** Xoá mềm: ẩn khỏi website & trang quản trị, giữ nguyên dữ liệu và tệp trên Cloudinary. */

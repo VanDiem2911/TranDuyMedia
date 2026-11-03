@@ -377,6 +377,12 @@ if (!noDb) {
         continue;
       }
       const { clips, stills, ...fields } = p; // eslint-disable-line no-unused-vars
+      // Giữ lại các khung hình (frames) đã tạo cho video từ trước (trang quản trị / lần chạy trước)
+      const prev = await Product.findOne({ slug: p.slug, deletedAt: null }).lean();
+      for (const m of media) {
+        const old = prev?.media?.find((x) => x.url === m.url);
+        if (old?.frames?.length) m.frames = old.frames;
+      }
       await Product.findOneAndUpdate(
         { slug: p.slug, deletedAt: null },
         { ...fields, kind: "video", media, published: true, order: -100 + i },

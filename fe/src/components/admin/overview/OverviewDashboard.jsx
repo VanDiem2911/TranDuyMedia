@@ -23,7 +23,7 @@ const hhmm = new Intl.DateTimeFormat("vi-VN", {
   hour12: false,
 });
 const dayMonth = (ymd) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`;
-const coverSrc = (m) => (m ? cdn(m.type === "image" ? m.url : m.poster) : null);
+const coverSrc = (m) => (m ? cdn(m.type === "image" ? m.url : m.poster, 128) : null); // ô 48px
 
 /** "3 ngày" / "5 giờ" / "12 phút" — đã chờ bao lâu */
 function waited(iso) {

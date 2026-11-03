@@ -7,6 +7,14 @@ export const mediaController = {
     created(res, await mediaService.upload(req.file, req.validated.body));
   },
 
+  signUpload(req, res) {
+    ok(res, mediaService.signUpload(req.validated.body));
+  },
+
+  async confirmUpload(req, res) {
+    created(res, await mediaService.confirmUpload(req.validated.body));
+  },
+
   async importUrl(req, res) {
     created(res, await mediaService.importFromUrl(req.validated.body.url, req.validated.body));
   },

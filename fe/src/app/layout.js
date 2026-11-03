@@ -1,6 +1,7 @@
 import { Be_Vietnam_Pro } from "next/font/google";
 import { INTRO_SKIP_SCRIPT } from "@/components/fx/intro-skip";
 import { Toaster } from "@/components/ui/Toaster";
+import { UploadResumer } from "@/components/admin/products/UploadResumer";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -96,6 +97,8 @@ export default function RootLayout({ children }) {
         {children}
         {/* Toast dùng chung cho toàn site (website, đăng nhập, quản trị) — luôn nằm trên cùng */}
         <Toaster />
+        {/* Tự tải tiếp việc lưu sản phẩm bị gián đoạn khi tải lại trang (chỉ trình duyệt quản trị viên có việc dở) */}
+        <UploadResumer />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

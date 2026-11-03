@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { fillTrio } from "@/lib/header-collage";
 import { mediaCount } from "@/lib/media-count";
 
 /**
@@ -25,16 +26,42 @@ export function toView(p) {
     url: m.url,
     poster: m.poster,
     duration: m.duration ?? null,
+    frames: m.frames ?? [],
     alt: m.alt || p.title,
   }));
   // Thư viện: video / link nhúng đứng trước, ảnh sau (ảnh bìa & cụm ảnh tiêu biểu vẫn chỉ lấy ẢNH — xem dưới)
   const images = media.length
     ? [...media.filter((m) => m.type !== "image"), ...media.filter((m) => m.type === "image")]
     : [{ src: "/images/og-image.png", pos: "center", type: "image" }];
-  // Ảnh bìa + ảnh nổi bật chỉ lấy ẢNH (video chỉ hiện trong thư viện); không có ảnh nào → dùng ảnh đại diện video
+  // Ảnh bìa (p.cover) và ảnh nổi bật (p.featured, ≤ 3) chọn RIÊNG ở trang quản trị, độc lập với nhau.
+  // Bỏ trống → tự lấy từ thư viện: ẢNH trước (video chỉ hiện trong thư viện), không có ảnh → ảnh đại diện video.
   const photos = images.filter((m) => m.type === "image");
-  const featured = photos.length ? photos : images.filter((m) => m.poster);
-  const cover = featured[0] ?? { src: "/images/bts/bts-05.webp", pos: "center", type: "image" };
+  const asView = (m) => ({
+    src: m.url,
+    pos: m.pos ?? "center",
+    zoom: m.zoom ?? 1,
+    width: m.width ?? null,
+    height: m.height ?? null,
+    type: "image",
+    url: m.url,
+    alt: m.alt || p.title,
+  });
+  // Chỉ có video → ảnh đại diện của từng video, rồi tới các cảnh phụ (frames) tự chụp từ video
+  const scenes = images.flatMap((m) =>
+    (m.frames ?? []).map((u) => ({
+      src: u,
+      pos: "center",
+      zoom: 1,
+      type: "image",
+      url: u,
+      alt: m.alt,
+    })),
+  );
+  const auto = photos.length ? photos : [...images.filter((m) => m.poster), ...scenes];
+  const picked = (p.featured ?? []).filter((m) => m?.url).map(asView);
+  const featured = [...picked, ...auto.filter((m) => !picked.some((c) => c.src === m.src))];
+  const cover = (p.cover?.url && asView(p.cover)) ??
+    auto[0] ?? { src: "/images/bts/bts-05.webp", pos: "center", type: "image" };
   return {
     id: p.id,
     slug: p.slug,
@@ -49,10 +76,12 @@ export function toView(p) {
     // Số lượng hiển thị theo đúng loại tệp: "15 ảnh · 01 video", "03 video", "16 ảnh"
     count: mediaCount(media),
     cover,
-    covers: featured.slice(0, 3),
-    // Sản phẩm chỉ có video (không có ảnh) → trang chi tiết dùng bố cục riêng cho video
+    covers: fillTrio(featured.length ? featured : [cover]),
+    // Sản phẩm chỉ có video (không có ảnh) → nút "Xem video" ở đầu trang + mục "Video sản phẩm"
     videoOnly: photos.length === 0 && images.some((m) => m.type !== "image"),
     images,
+    // Cảnh phụ của video → thêm vào ảnh bìa ghép đầu trang cho đa dạng
+    scenes: scenes.map((m) => m.src),
   };
 }
 
@@ -80,6 +109,9 @@ async function withSizes(view) {
 async function request(path) {
   const res = await fetch(`${BACKEND_URL}/api/v1${path}`, {
     headers: { accept: "application/json" },
+    // Bộ nhớ đệm do "use cache" + cacheTag(PRODUCTS_TAG) quản lý. Không để fetch-cache của Next lưu thêm
+    // một lớp không gắn tag — lớp đó khiến trang vẫn hiện dữ liệu cũ sau khi quản trị bấm Lưu.
+    cache: "no-store",
     signal: AbortSignal.timeout(8000),
   });
   if (res.status === 404) return null;
@@ -87,28 +119,34 @@ async function request(path) {
   return (await res.json()).data;
 }
 
-export async function getProducts() {
+// LỖI KẾT NỐI không được cache: hàm "use cache" ném lỗi ra ngoài (Next không lưu kết quả lỗi), hàm bọc bên
+// ngoài mới xử lý → backend chập chờn vài giây không làm trang bị "trống" / "404" suốt nhiều phút.
+async function cachedProducts() {
   "use cache";
   cacheTag(PRODUCTS_TAG);
   cacheLife("minutes");
+  // Kích thước ảnh thật → thẻ sản phẩm chọn đúng bản ảnh đủ nét cho khung đóng sẵn
+  return Promise.all(((await request("/products")) ?? []).map((p) => withSizes(toView(p))));
+}
+
+export async function getProducts() {
   try {
-    // Kích thước ảnh thật → thẻ sản phẩm chọn đúng bản ảnh đủ nét cho khung đóng sẵn
-    return await Promise.all(((await request("/products")) ?? []).map((p) => withSizes(toView(p))));
+    return await cachedProducts();
   } catch {
     return [];
   }
 }
 
+/**
+ * Sản phẩm theo slug: null CHỈ khi backend trả 404 (thật sự không có → trang 404).
+ * Lỗi kết nối → ném lỗi (không cache) để trang báo lỗi tạm thời, lần tải sau tự lấy lại.
+ */
 export async function getProduct(slug) {
   "use cache";
   cacheTag(PRODUCTS_TAG);
   cacheLife("minutes");
-  try {
-    const p = await request(`/products/${encodeURIComponent(slug)}`);
-    return p ? await withSizes(toView(p)) : null;
-  } catch {
-    return null;
-  }
+  const p = await request(`/products/${encodeURIComponent(slug)}`);
+  return p ? withSizes(toView(p)) : null;
 }
 
 /**

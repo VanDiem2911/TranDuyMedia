@@ -47,7 +47,7 @@ const schema = z
 
     // Giới hạn dung lượng upload (MB)
     UPLOAD_MAX_IMAGE_MB: z.coerce.number().positive().default(10),
-    UPLOAD_MAX_VIDEO_MB: z.coerce.number().positive().default(200),
+    UPLOAD_MAX_VIDEO_MB: z.coerce.number().positive().default(100),
 
     // ---------- Xác thực (JWT trong cookie HttpOnly) ----------
     // Chuỗi ngẫu nhiên ≥ 32 ký tự, khác nhau cho access & refresh. Tạo: npm run secret

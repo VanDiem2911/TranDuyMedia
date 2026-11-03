@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { CoverPicker } from "./CoverPicker";
 import { MediaManager } from "./MediaManager";
-import { keepImagesFirst, newKey, slugify } from "./media-utils";
+import { newKey, slugify } from "./media-utils";
 
 const EMPTY = {
   title: "",
@@ -31,24 +32,21 @@ function validate(f, media) {
 }
 
 /**
- * Popup thêm / sửa sản phẩm. Trái: thông tin · Phải: ảnh & video.
+ * Popup thêm / sửa sản phẩm. Trái: thông tin · Phải: ảnh bìa & ảnh nổi bật (chọn riêng) + thư viện ảnh & video.
  * Bấm "Lưu" → kiểm tra dữ liệu → gửi bản nháp cho onSubmit (lưu nền) và đóng popup ngay.
  * initial: sản phẩm từ API (sửa) | bản nháp lỗi cần thử lại | null (tạo mới)
  */
 export function ProductEditor({ initial, onSubmit, onClose }) {
   const isEdit = Boolean(initial?.id);
   const [form, setForm] = useState(() => ({ ...EMPTY, ...(initial?.form ?? pick(initial)) }));
-  const [media, setMedia] = useState(() =>
-    initial?.media
-      ? keepImagesFirst(
-          initial.media.map((m) => ({
-            key: m.key ?? newKey(),
-            source: m.source ?? "existing",
-            ...m,
-          })),
-        )
-      : [],
-  );
+  const withKeys = (list) =>
+    (list ?? []).map((m) => ({ key: m.key ?? newKey(), source: m.source ?? "existing", ...m }));
+  const [media, setMedia] = useState(() => withKeys(initial?.media));
+  // Ảnh đại diện (1, field "cover") + ảnh nổi bật (≤ 3) chọn riêng — bỏ trống → website tự lấy từ thư viện
+  const [picks, setPicks] = useState(() => ({
+    cover: initial?.cover ? withKeys([initial.cover])[0] : null,
+    featured: withKeys(initial?.featured),
+  }));
   // Đường dẫn tự đi theo tên (cả khi tạo mới lẫn khi sửa) cho tới khi người dùng tự gõ vào ô đường dẫn.
   // Bản nháp lỗi mở lại: giữ nguyên nếu đường dẫn đã được chỉnh tay (khác với tên).
   const [slugTouched, setSlugTouched] = useState(
@@ -57,8 +55,14 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
   const [errors, setErrors] = useState({});
   const [confirmClose, setConfirmClose] = useState(false);
   const dirty = useMemo(
-    () => JSON.stringify({ form, media: media.map((m) => [m.key, m.pos, m.zoom]) }),
-    [form, media],
+    () =>
+      JSON.stringify({
+        form,
+        media: media.map((m) => [m.key, m.pos, m.zoom]),
+        cover: picks.cover && [picks.cover.key, picks.cover.pos, picks.cover.zoom],
+        featured: picks.featured.map((m) => [m.key, m.pos, m.zoom]),
+      }),
+    [form, media, picks],
   );
   const [baseline] = useState(dirty);
 
@@ -93,6 +97,19 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
       toast.warning("Vui lòng kiểm tra lại các mục được đánh dấu.", {
         title: "Thông tin chưa đầy đủ",
       });
+      // Đưa ngay tới ô lỗi đầu tiên (popup dài, nhất là trên điện thoại) + đặt con trỏ vào đó
+      const formEl = e.currentTarget;
+      requestAnimationFrame(() => {
+        const bad = formEl.querySelector('[aria-invalid="true"], [data-invalid="true"]');
+        bad?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (bad?.matches("input, textarea")) bad.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (media.some((m) => m.capturing)) {
+      toast.info("Đang tạo ảnh đại diện cho video vừa thêm, vui lòng bấm Lưu lại sau vài giây.", {
+        title: "Chờ một chút",
+      });
       return;
     }
     onSubmit({
@@ -105,6 +122,8 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
         slug: form.slug || slugify(form.title),
       },
       media,
+      cover: picks.cover,
+      featured: picks.featured,
     });
   };
 
@@ -268,7 +287,8 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
           </div>
 
           <div className="p-6">
-            <SectionTitle n="2" title="Ảnh & video" />
+            {/* Thứ tự tự nhiên: tải ảnh / video vào thư viện trước → (tuỳ chọn) chọn ảnh đại diện & ảnh nổi bật */}
+            <SectionTitle n="2" title="Thư viện sản phẩm" />
             <div className="mt-4">
               <MediaManager
                 items={media}
@@ -277,6 +297,16 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
                   if (errors.media) setErrors((x) => ({ ...x, media: undefined }));
                 }}
                 error={errors.media}
+              />
+            </div>
+            <div className="mt-7 border-t border-ink/10 pt-6" />
+            <SectionTitle n="3" title="Ảnh đại diện & ảnh nổi bật" optional />
+            <div className="mt-4">
+              <CoverPicker
+                cover={picks.cover}
+                featured={picks.featured}
+                library={media}
+                onChange={setPicks}
               />
             </div>
           </div>
@@ -354,13 +384,18 @@ function pick(p) {
   };
 }
 
-function SectionTitle({ n, title }) {
+function SectionTitle({ n, title, optional }) {
   return (
     <p className="flex items-center gap-2.5 text-[11px] font-semibold tracking-eyebrow text-ink-muted uppercase">
       <span className="flex size-5 items-center justify-center rounded-full bg-orange-500 text-[10px] text-white">
         {n}
       </span>
       {title}
+      {optional && (
+        <span className="rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold tracking-normal text-ink-muted normal-case ring-1 ring-ink/10">
+          Tuỳ chọn
+        </span>
+      )}
     </p>
   );
 }

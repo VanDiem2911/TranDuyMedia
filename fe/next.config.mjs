@@ -37,6 +37,9 @@ const nextConfig = {
     remotePatterns: [
       // Ảnh đại diện video YouTube (sản phẩm dạng link nhúng)
       { protocol: "https", hostname: "img.youtube.com", pathname: "/vi/**" },
+      // Ảnh đại diện video Google Drive (link nhúng) — Drive chuyển hướng sang googleusercontent
+      { protocol: "https", hostname: "drive.google.com", pathname: "/thumbnail" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
       {
         protocol: "https",
         hostname: "res.cloudinary.com",

@@ -90,6 +90,7 @@ export class OverviewService {
           updatedAt: p.updatedAt,
           media: (p.media ?? []).length,
           cover:
+            p.cover ??
             (p.media ?? []).find((m) => m.type === "image") ??
             (p.media ?? []).find((m) => m.poster) ??
             null,

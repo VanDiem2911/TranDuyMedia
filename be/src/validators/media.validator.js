@@ -25,6 +25,33 @@ export const uploadMediaSchema = z.object({
     ),
 });
 
+/** Xin chữ ký tải thẳng lên Cloudinary. */
+export const signUploadSchema = z.object({
+  folder: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9/_-]*$/i, "Tên thư mục chỉ gồm chữ, số, - _ /")
+    .max(120)
+    .optional()
+    .default(""),
+});
+
+/** Kết quả Cloudinary trả về cho trình duyệt sau khi tải thẳng (đã ký — xem media.service.confirmUpload). */
+export const confirmUploadSchema = z.object({
+  public_id: z.string().min(1).max(300),
+  version: z.coerce.number().int().positive(),
+  signature: z.string().regex(/^[a-f0-9]{40,64}$/i),
+  resource_type: z.enum(["image", "video"]),
+  secure_url: z.url().max(1000),
+  format: z
+    .string()
+    .regex(/^(jpe?g|png|webp|avif|gif|mp4|mov|webm|m4v)$/i, "Định dạng tệp không được hỗ trợ"),
+  bytes: z.number().int().nonnegative().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  duration: z.number().nonnegative().optional(),
+});
+
 export const listMediaQuerySchema = z.object({
   type: z.enum(MEDIA_TYPES).optional(),
   folder: z.string().trim().optional(),

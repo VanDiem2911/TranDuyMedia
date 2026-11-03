@@ -15,7 +15,8 @@ function Thumb({ src, crop, className }) {
   return (
     <div
       className={cn(
-        "relative aspect-3/4 overflow-hidden bg-paper-200 ring-1 ring-ink/10",
+        "relative aspect-3/4 overflow-hidden",
+        "bg-paper-200 ring-1 ring-ink/10",
         className,
       )}
     >
@@ -47,13 +48,13 @@ function Preview({ caption, note, children }) {
 
 /**
  * Popup cắt khung ảnh kiểu CapCut: kéo ảnh để chọn vùng hiển thị, cuộn chuột / thanh trượt để phóng.
- * Chỉ dùng cho các ảnh bị đóng khung 3:4 trên website (CROPPABLE ảnh đầu):
- * - Ảnh bìa → thẻ sản phẩm (/san-pham, "Sản phẩm khác") + ảnh nổi bật đầu tiên.
- * - Ảnh 2–3 → ảnh nổi bật ở phần giới thiệu trang chi tiết.
+ * Dùng cho ảnh đóng khung 3:4 trên website:
+ * - role "cover"    → ảnh đại diện (thẻ sản phẩm ở /san-pham, "Sản phẩm khác").
+ * - role "featured" → ảnh nổi bật (phần giới thiệu trang chi tiết).
  * "Thư viện sản phẩm" và ảnh xem lớn (lightbox) luôn hiện ảnh gốc, không cắt.
- * item: { src, pos, zoom } · rank: thứ tự ảnh
+ * item: { src, pos, zoom }
  */
-export function ImageCropper({ item, rank = 0, onApply, onClose }) {
+export function ImageCropper({ item, role = "featured", onApply, onClose }) {
   const [pt, setPt] = useState(() => parsePos(item.pos));
   const [zoom, setZoom] = useState(() => clamp(item.zoom || 1, MIN_ZOOM, MAX_ZOOM));
   const [natural, setNatural] = useState(null);
@@ -287,21 +288,16 @@ export function ImageCropper({ item, rank = 0, onApply, onClose }) {
               <p className="mb-3 text-center text-[11px] font-semibold tracking-eyebrow whitespace-nowrap text-ink-muted uppercase">
                 Xem trước trên website
               </p>
-              {/* Ảnh bìa: thẻ sản phẩm + ảnh nổi bật đầu tiên · Ảnh 2–3: chỉ ảnh nổi bật (căn giữa) */}
-              <div
-                className={cn(
-                  "grid gap-3",
-                  rank === 0 ? "grid-cols-2" : "mx-auto w-[calc(50%-0.375rem)]",
-                )}
-              >
-                {rank === 0 && (
+              <div className="mx-auto w-[calc(50%-0.375rem)]">
+                {role === "cover" ? (
                   <Preview caption="Thẻ sản phẩm" note="(trang Sản phẩm)">
                     <Thumb src={item.src} crop={crop} className="rounded-lg" />
                   </Preview>
+                ) : (
+                  <Preview caption="Ảnh nổi bật" note="(phần giới thiệu)">
+                    <Thumb src={item.src} crop={crop} className="rounded-lg" />
+                  </Preview>
                 )}
-                <Preview caption="Ảnh nổi bật" note="(trong trang chi tiết)">
-                  <Thumb src={item.src} crop={crop} className="rounded-lg" />
-                </Preview>
               </div>
             </div>
 

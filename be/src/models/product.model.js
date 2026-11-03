@@ -4,8 +4,8 @@ export const PRODUCT_KINDS = ["photo", "video"];
 export const MEDIA_ITEM_TYPES = ["image", "video", "embed"]; // embed = YouTube / Vimeo
 
 /**
- * Một tệp trong thư viện của sản phẩm. Thứ tự trong mảng = thứ tự hiển thị;
- * phần tử đầu tiên là ảnh bìa, 3 phần tử đầu là bộ ảnh tiêu biểu ở trang chi tiết.
+ * Một tệp trong thư viện (media), ảnh bìa (cover) hoặc ảnh nổi bật (featured) của sản phẩm.
+ * Thứ tự trong mảng = thứ tự hiển thị.
  */
 const mediaItemSchema = new mongoose.Schema(
   {
@@ -18,6 +18,8 @@ const mediaItemSchema = new mongoose.Schema(
     width: Number,
     height: Number,
     duration: Number,
+    // Video: vài khung hình ở các cảnh khác nhau (ngoài poster) → ảnh nổi bật / ảnh bìa ghép tự động
+    frames: { type: [String], default: undefined },
     alt: { type: String, default: "", maxlength: 300 },
   },
   { _id: false },
@@ -36,6 +38,10 @@ const productSchema = new mongoose.Schema(
     studioSet: { type: String, default: null }, // slug bối cảnh studio (liên kết thẻ bối cảnh)
     kind: { type: String, enum: PRODUCT_KINDS, default: "photo" },
     media: { type: [mediaItemSchema], default: [] },
+    // Ảnh đại diện (thẻ sản phẩm; ảnh bìa đầu trang tự ghép từ thư viện) và tối đa 3 ảnh nổi bật (phần giới thiệu) — chọn riêng,
+    // tách khỏi thư viện. Bỏ trống → website tự lấy từ thư viện.
+    cover: { type: mediaItemSchema, default: null },
+    featured: { type: [mediaItemSchema], default: [] },
     published: { type: Boolean, default: true, index: true },
     order: { type: Number, default: 0 },
     // Xoá mềm: bản ghi + tệp trên Cloudinary vẫn giữ (khôi phục / đối soát được), chỉ ẩn khỏi mọi truy vấn

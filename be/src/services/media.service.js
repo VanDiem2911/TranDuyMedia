@@ -10,6 +10,27 @@ import { downloadRemoteFile } from "#utils/remote-file.js";
  * Nếu lưu DB thất bại sau khi upload → xoá file vừa upload trên Cloudinary để không bị "rác".
  */
 
+/** Định dạng được phép khi trình duyệt tải thẳng lên Cloudinary. */
+export const ALLOWED_FORMATS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "avif",
+  "gif",
+  "mp4",
+  "mov",
+  "webm",
+  "m4v",
+];
+
+/**
+ * Bản xem trước NHẸ của video (480p, chất lượng thấp, vài MB) — trang quản trị dùng để tua chọn khung hình
+ * tức thì thay vì tải video gốc hàng chục MB. Cloudinary tạo sẵn ngay sau khi tải lên (eager, chạy nền).
+ * PHẢI khớp VIDEO_PROXY ở fe/src/components/admin/products/media-utils.js.
+ */
+export const VIDEO_PROXY = "c_limit,q_auto:low,w_480";
+
 export class MediaService {
   constructor(repo = mediaRepository, storage = cloudinary) {
     this.repo = repo;
@@ -53,6 +74,60 @@ export class MediaService {
     });
   }
 
+  /**
+   * public_id của một tệp GỐC trên kho Cloudinary của website (bỏ qua link ngoài, link YouTube / Drive,
+   * link có biến đổi kiểu so_auto…) → null nếu không phải tệp của website.
+   */
+  static publicIdOf(url) {
+    if (typeof url !== "string" || !env.CLOUDINARY_CLOUD_NAME) return null;
+    const m = url.match(
+      new RegExp(
+        `^https://res\\.cloudinary\\.com/${env.CLOUDINARY_CLOUD_NAME}/(?:image|video)/upload/(?:v\\d+/)?(.+?)\\.[a-z0-9]+(?:\\?.*)?$`,
+        "i",
+      ),
+    );
+    const id = m?.[1];
+    return id && id.startsWith(`${env.CLOUDINARY_FOLDER}/`) ? id : null;
+  }
+
+  /**
+   * Xoá hẳn các tệp KHÔNG CÒN DÙNG khỏi Cloudinary + bản ghi media tương ứng (chạy nền, lỗi chỉ ghi log).
+   * assets: Map<public_id, "image" | "video">
+   */
+  async purge(assets) {
+    if (!env.hasCloudinary || !assets.size) return;
+    try {
+      for (const type of ["image", "video"]) {
+        const ids = [...assets].filter(([, t]) => t === type).map(([id]) => id);
+        for (let i = 0; i < ids.length; i += 100)
+          await this.storage.api.delete_resources(ids.slice(i, i + 100), {
+            resource_type: type,
+            invalidate: true,
+          });
+      }
+      await this.repo.model.deleteMany({ publicId: { $in: [...assets.keys()] } });
+      logger.info("Đã xoá tệp không còn dùng", { count: assets.size });
+    } catch (err) {
+      logger.warn("Chưa xoá được tệp không còn dùng", {
+        message: err?.message ?? err?.error?.message,
+      });
+    }
+  }
+
+  /** Yêu cầu Cloudinary tạo sẵn bản xem trước nhẹ cho video (chạy nền, lỗi không ảnh hưởng việc lưu). */
+  makeVideoProxy(publicId) {
+    return this.storage.uploader
+      .explicit(publicId, {
+        type: "upload",
+        resource_type: "video",
+        eager: [{ raw_transformation: VIDEO_PROXY, format: "mp4" }],
+        eager_async: true,
+      })
+      .catch((err) =>
+        logger.warn("Chưa tạo được bản xem trước video", { publicId, message: err?.message }),
+      );
+  }
+
   /** Ảnh đại diện của video Cloudinary: khung hình đẹp nhất, định dạng WebP. */
   static posterOf(result) {
     if (result.resource_type !== "video") return null;
@@ -65,6 +140,7 @@ export class MediaService {
   }
 
   #record(result, { target, alt = "", tags = [] }) {
+    if (result.resource_type === "video") this.makeVideoProxy(result.public_id);
     return this.repo.create({
       publicId: result.public_id,
       type: result.resource_type === "video" ? "video" : "image",
@@ -120,7 +196,7 @@ export class MediaService {
     return this.#record(result, { target });
   }
 
-  /** YouTube / Vimeo → { type: "embed", url (link nhúng), poster } */
+  /** YouTube / Vimeo / Google Drive → { type: "embed", url (link nhúng), poster } */
   static parseEmbed(raw) {
     let u;
     try {
@@ -139,6 +215,19 @@ export class MediaService {
         type: "embed",
         url: `https://www.youtube-nocookie.com/embed/${id}`,
         poster: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+        publicId: null,
+      };
+    }
+    // Google Drive (đã mở quyền xem) → khung nhúng: video nặng không cần tải lên kho lưu trữ
+    const drive =
+      host === "drive.google.com"
+        ? (u.pathname.match(/\/file\/d\/([\w-]{20,})/)?.[1] ?? u.searchParams.get("id"))
+        : null;
+    if (drive && /^[\w-]{20,}$/.test(drive)) {
+      return {
+        type: "embed",
+        url: `https://drive.google.com/file/d/${drive}/preview`,
+        poster: `https://drive.google.com/thumbnail?id=${drive}&sz=w1600`,
         publicId: null,
       };
     }
@@ -183,6 +272,63 @@ export class MediaService {
         .catch(() => {});
       throw err;
     }
+  }
+
+  /**
+   * TẢI THẲNG LÊN CLOUDINARY (nhanh gấp đôi, có % tiến độ thật): trình duyệt gửi tệp trực tiếp tới Cloudinary
+   * thay vì qua máy chủ này rồi mới chuyển tiếp. Máy chủ chỉ KÝ yêu cầu — API secret không rời backend,
+   * chữ ký chỉ hợp lệ cho đúng thư mục + thời điểm này (Cloudinary từ chối chữ ký cũ hơn 1 giờ).
+   */
+  signUpload({ folder = "" } = {}) {
+    this.#ensureConfigured();
+    const params = {
+      folder: [env.CLOUDINARY_FOLDER, folder].filter(Boolean).join("/"),
+      timestamp: Math.round(Date.now() / 1000),
+      unique_filename: true,
+      use_filename: true,
+      // Chữ ký chỉ dùng được cho ảnh / video (không cho tải HTML, SVG, tệp tuỳ ý bằng chữ ký này)
+      allowed_formats: ALLOWED_FORMATS.join(","),
+    };
+    return {
+      cloudName: env.CLOUDINARY_CLOUD_NAME,
+      apiKey: env.CLOUDINARY_API_KEY,
+      params,
+      signature: this.storage.utils.api_sign_request(params, env.CLOUDINARY_API_SECRET),
+      chunkSize: 20 * 1024 * 1024,
+    };
+  }
+
+  /**
+   * Ghi nhận tệp trình duyệt vừa tải thẳng lên Cloudinary. Kiểm tra chữ ký Cloudinary trả về
+   * (public_id + version ký bằng API secret) → không thể "khai" một tệp không do hệ thống này tải lên.
+   */
+  async confirmUpload(r) {
+    this.#ensureConfigured();
+    if (!this.storage.utils.verify_api_response_signature(r.public_id, r.version, r.signature)) {
+      throw ApiError.badRequest("Không xác thực được tệp vừa tải lên, vui lòng thử lại.", {
+        code: "INVALID_UPLOAD",
+      });
+    }
+    const target = r.public_id.split("/").slice(0, -1).join("/");
+    if (!(target + "/").startsWith(env.CLOUDINARY_FOLDER + "/")) {
+      throw ApiError.badRequest("Tệp không thuộc kho lưu trữ của website.", {
+        code: "INVALID_UPLOAD",
+      });
+    }
+    // Link tự dựng từ public_id + version (đã được Cloudinary ký) — không dùng link do trình duyệt gửi lên
+    const secure_url = this.storage.url(r.public_id, {
+      resource_type: r.resource_type,
+      type: "upload",
+      version: r.version,
+      format: r.format,
+      secure: true,
+      urlAnalytics: false, // không gắn "?_a=…" vào cuối link
+    });
+    const limit = r.resource_type === "video" ? env.UPLOAD_MAX_VIDEO_MB : env.UPLOAD_MAX_IMAGE_MB;
+    if (r.bytes > limit * 1024 * 1024) {
+      throw ApiError.payloadTooLarge(`Tệp vượt quá ${limit}MB`);
+    }
+    return this.#record({ ...r, secure_url }, { target });
   }
 
   list({ type, folder, tag, page, limit }) {

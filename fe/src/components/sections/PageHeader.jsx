@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 /**
  * Banner đầu trang con — MỌI trang con cùng chiều cao: 2/3 màn hình (tối thiểu 460px, theo mẫu ButStudio).
  * Nền: 1 ảnh tối (image) HOẶC các cột ảnh trôi lên/xuống so le rất chậm (columns: [[src, src, src], ...]).
+ * Mỗi ô có thể là src hoặc { src, pos, zoom } — dùng để cắt nhiều vùng khác nhau từ cùng một ảnh.
  * crumbs: các cấp TRƯỚC trang hiện tại (sau "Trang chủ") [{ label, href }] — breadcrumb không hiện trang hiện tại. eyebrow: dòng nhỏ trên tiêu đề (mặc định = breadcrumb).
  * Cụm nội dung căn GIỮA theo chiều cao vùng nền nằm dưới header (header nổi cao 84px: top 20 + 64).
  */
@@ -44,18 +45,31 @@ export function PageHeader({
                   i % 2 ? "animate-drift-down" : "animate-drift-up",
                 )}
               >
-                {col.map((src, k) => (
-                  <div key={k} className="relative flex-1 overflow-hidden rounded-xl">
-                    <Image
-                      src={src}
-                      alt=""
-                      fill
-                      preload={k === 0 && i < 3}
-                      sizes="(min-width: 1024px) 17vw, (min-width: 640px) 25vw, 34vw"
-                      className="object-cover saturate-[0.85]"
-                    />
-                  </div>
-                ))}
+                {col.map((tile, k) => {
+                  const t = typeof tile === "string" ? { src: tile } : tile;
+                  return (
+                    <div key={k} className="relative flex-1 overflow-hidden rounded-xl">
+                      <span
+                        className="absolute inset-0"
+                        style={
+                          t.zoom > 1
+                            ? { transform: `scale(${t.zoom})`, transformOrigin: t.pos }
+                            : undefined
+                        }
+                      >
+                        <Image
+                          src={t.src}
+                          alt=""
+                          fill
+                          preload={k === 0 && i < 3}
+                          sizes={`(min-width: 1024px) ${Math.round(17 * (t.zoom || 1))}vw, (min-width: 640px) ${Math.round(25 * (t.zoom || 1))}vw, ${Math.round(34 * (t.zoom || 1))}vw`}
+                          className="object-cover saturate-[0.85]"
+                          style={t.pos ? { objectPosition: t.pos } : undefined}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 
 /**
  * Xem trước video trong trang quản trị — dùng cho tệp vừa chọn từ máy, video đã tải lên và link
- * YouTube / Vimeo. Có đủ thanh điều khiển: phát / dừng, tua, âm lượng, toàn màn hình.
+ * YouTube / Vimeo / Google Drive. Có đủ thanh điều khiển: phát / dừng, tua, âm lượng, toàn màn hình.
  * Esc chỉ đóng popup này (không đóng popup sửa sản phẩm phía sau).
  * type: "video" | "embed" · url · poster? · name?
  */
@@ -40,7 +40,8 @@ export function VideoPreview({ type, url, poster, name, onClose }) {
             <Icon name="play" className="ml-0.5 size-3.5" strokeWidth={0} fill="currentColor" />
           </span>
           <p className="min-w-0 flex-1 truncate text-left text-sm font-semibold">
-            {name || (type === "embed" ? "Video YouTube / Vimeo" : "Xem trước video")}
+            {name ||
+              (type === "embed" ? "Video nhúng (YouTube / Drive / Vimeo)" : "Xem trước video")}
           </p>
           <button
             type="button"

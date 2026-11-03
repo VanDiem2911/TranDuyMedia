@@ -2,36 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
-import { zoomStyle } from "@/lib/crop";
 import { detectSmartPos } from "@/lib/smart-focal";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { ImageCropper } from "./ImageCropper";
+import { OversizeDialog } from "./OversizeDialog";
 import { VideoPreview } from "./VideoPreview";
 import {
   ACCEPT,
+  captureFrames,
   checkFile,
   guessLinkType,
   MAX_FILES,
   MAX_IMAGE_MB,
   MAX_VIDEO_MB,
   newKey,
-  CROPPABLE,
+  oversize,
   parseEmbed,
-  isImage,
-  keepImagesFirst,
   playUrl,
   previewOf,
 } from "./media-utils";
 
-const TYPE_LABEL = { image: "Ảnh", video: "Video", embed: "YouTube / Vimeo" };
+const TYPE_LABEL = { image: "Ảnh", video: "Video", embed: "Link video" };
 
 /**
  * Quản lý ảnh & video của sản phẩm:
  * - Kéo-thả hoặc bấm để chọn tệp từ máy (nhiều tệp một lúc).
- * - Dán link ảnh / video / YouTube / Vimeo.
- * - Kéo thả thẻ để sắp xếp; tệp đầu tiên là ảnh bìa. Bấm vào 3 ảnh đầu (biểu tượng bút) để cắt khung hiển thị.
- * - Ảnh bìa + ảnh nổi bật (3 ô đầu) chỉ dùng ảnh — video luôn xếp phía sau.
+ * - Dán link ảnh / video / YouTube / Vimeo / Google Drive.
+ * - Kéo thả thẻ để sắp xếp thứ tự trong thư viện.
+ * - Ảnh bìa & ảnh nổi bật chọn RIÊNG ở CoverPicker (không còn phụ thuộc thứ tự thư viện).
  * Tệp chỉ được tải lên khi bấm "Lưu" (xem jobs.js).
  */
 export function MediaManager({ items, onChange, error }) {
@@ -39,15 +37,11 @@ export function MediaManager({ items, onChange, error }) {
   const [link, setLink] = useState("");
   const [over, setOver] = useState(false);
   const [dragKey, setDragKey] = useState(null);
-  const [cropKey, setCropKey] = useState(null);
-  const cropItem = cropKey && items.find((m) => m.key === cropKey);
   const [playKey, setPlayKey] = useState(null);
+  const [tooBig, setTooBig] = useState(null); // tệp quá nặng → hộp thoại gợi ý dán link Drive / YouTube
+  const linkInput = useRef(null);
   const playItem = playKey && items.find((m) => m.key === playKey);
-  const visual = items.filter(isImage);
-  const featured = Math.min(CROPPABLE, visual.length); // số ô đầu chỉ dành cho ảnh
-
-  // Mọi thay đổi danh sách đều qua đây: luôn đưa ảnh lên các ô bìa / nổi bật
-  const commit = (list) => onChange(keepImagesFirst(list));
+  const commit = (list) => onChange(list);
 
   // Bản sao mới nhất của danh sách + các ảnh người dùng ĐÃ cắt tay — để cơ chế tự căn chỉnh
   // chạy nền bên dưới không bao giờ ghi đè lựa chọn thủ công.
@@ -74,19 +68,62 @@ export function MediaManager({ items, onChange, error }) {
     });
   };
 
+  /**
+   * Video vừa chọn từ máy → TỰ ĐỘNG chụp 3 cảnh (tải lên cùng video khi bấm Lưu): cảnh đầu làm ảnh đại diện,
+   * 2 cảnh sau (frames) cho ảnh nổi bật / ảnh bìa ghép; kèm kích thước + thời lượng thật.
+   */
+  const autoPoster = (item) => {
+    captureFrames(item.preview).then((r) => {
+      const list = itemsRef.current;
+      if (!list.some((m) => m.key === item.key)) return;
+      // Không chụp được (định dạng lạ…) → bỏ cờ "đang chụp", Cloudinary tự tạo ảnh đại diện khi lưu
+      if (!r) {
+        onChange(list.map((m) => (m.key === item.key ? { ...m, capturing: false } : m)));
+        return;
+      }
+      const base = item.name.replace(/\.[^.]+$/, "");
+      const [posterFile, ...frameFiles] = r.blobs.map(
+        (b, i) =>
+          new File([b], `${base}-${i ? `canh-${i}` : "poster"}.jpg`, { type: "image/jpeg" }),
+      );
+      onChange(
+        list.map((m) =>
+          m.key === item.key
+            ? {
+                ...m,
+                capturing: false,
+                posterFile,
+                poster: URL.createObjectURL(posterFile),
+                frameFiles,
+                frames: frameFiles.map((x) => URL.createObjectURL(x)),
+                width: r.width,
+                height: r.height,
+                duration: r.duration,
+              }
+            : m,
+        ),
+      );
+    });
+  };
+
   const addFiles = (files) => {
     const next = [];
     const problems = [];
+    const big = [];
     let skipped = 0;
     for (const file of files) {
-      const problem = checkFile(file);
-      if (problem) problems.push(problem);
+      const heavy = oversize(file);
+      const problem = heavy ? null : checkFile(file);
+      if (heavy) big.push(heavy);
+      else if (problem) problems.push(problem);
       else if (items.length + next.length >= MAX_FILES) skipped++;
       else
         next.push({
           key: newKey(),
           source: "file",
           type: file.type.startsWith("video/") ? "video" : "image",
+          // Video: đang tự chụp ảnh đại diện + cảnh phụ (vài giây) → chặn bấm Lưu tới khi xong
+          capturing: file.type.startsWith("video/"),
           file,
           preview: URL.createObjectURL(file),
           name: file.name,
@@ -105,6 +142,7 @@ export function MediaManager({ items, onChange, error }) {
         { title: `Đã thêm ${next.length}/${next.length + skipped} tệp` },
       );
     }
+    if (big.length) setTooBig(big);
     if (problems.length) {
       toast.warning(problems.slice(0, 3).join(" "), {
         title: problems.length > 1 ? `${problems.length} tệp chưa được thêm` : "Tệp chưa được thêm",
@@ -113,6 +151,7 @@ export function MediaManager({ items, onChange, error }) {
     if (next.length) {
       commit([...items, ...next]);
       next.forEach(autoFit);
+      next.filter((m) => m.type === "video").forEach(autoPoster);
     }
   };
 
@@ -159,12 +198,6 @@ export function MediaManager({ items, onChange, error }) {
   };
   const move = (from, to) => {
     if (to < 0 || to >= items.length || from === to) return;
-    if (!isImage(items[from]) && to < featured) {
-      toast.info("Ảnh bìa và ảnh nổi bật chỉ dùng ảnh, video sẽ nằm phía sau.", {
-        title: "Không thể đưa video lên đầu",
-      });
-      return;
-    }
     const next = [...items];
     const [m] = next.splice(from, 1);
     next.splice(to, 0, m);
@@ -176,6 +209,7 @@ export function MediaManager({ items, onChange, error }) {
       {/* Vùng chọn tệp */}
       <button
         type="button"
+        data-invalid={error ? "true" : undefined}
         onClick={() => input.current?.click()}
         onDragOver={(e) => {
           if (!e.dataTransfer.types.includes("Files")) return;
@@ -230,6 +264,7 @@ export function MediaManager({ items, onChange, error }) {
             className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-muted"
           />
           <input
+            ref={linkInput}
             value={link}
             onChange={(e) => setLink(e.target.value)}
             onKeyDown={(e) => {
@@ -238,7 +273,7 @@ export function MediaManager({ items, onChange, error }) {
                 addLink();
               }
             }}
-            placeholder="Hoặc dán link ảnh, video, YouTube / Vimeo…"
+            placeholder="Hoặc dán link ảnh, video, YouTube, Google Drive…"
             className="field pl-11"
           />
         </label>
@@ -257,16 +292,11 @@ export function MediaManager({ items, onChange, error }) {
       {items.length > 0 && (
         <>
           <p className="mt-5 mb-2 text-left text-xs text-ink-muted">
-            {items.length} tệp - kéo thả để sắp xếp - ảnh đầu là{" "}
-            <strong className="font-semibold text-ink">ảnh bìa</strong>, 2 ảnh kế là{" "}
-            <strong className="font-semibold text-ink">ảnh nổi bật</strong>
+            {items.length} tệp - kéo thả để sắp xếp thứ tự trong thư viện
           </p>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {items.map((m, i) => {
               const src = previewOf(m);
-              // Chỉ ảnh bìa + ảnh nổi bật bị đóng khung trên website → chỉ những ảnh này cắt được
-              const rank = visual.indexOf(m);
-              const croppable = rank >= 0 && rank < CROPPABLE;
               return (
                 <li
                   key={m.key}
@@ -288,21 +318,18 @@ export function MediaManager({ items, onChange, error }) {
                   className={cn(
                     "group overflow-hidden rounded-xl bg-white ring-1 ring-ink/10 transition",
                     dragKey === m.key && "opacity-40",
-                    rank === 0 && "ring-2 ring-orange-500",
                   )}
                 >
                   <div className="relative aspect-4/3 cursor-grab overflow-hidden bg-paper-200 active:cursor-grabbing">
                     {src ? (
-                      <span
-                        className="absolute inset-0"
-                        style={croppable ? zoomStyle(m) : undefined}
-                      >
+                      <span className="absolute inset-0">
                         {/* eslint-disable-next-line @next/next/no-img-element -- xem trước tệp cục bộ / link bất kỳ */}
                         <img
                           src={src}
+                          loading="lazy"
+                          decoding="async"
                           alt=""
                           className="size-full object-cover"
-                          style={{ objectPosition: croppable ? m.pos : undefined }}
                           draggable={false}
                         />
                       </span>
@@ -325,21 +352,7 @@ export function MediaManager({ items, onChange, error }) {
                       </span>
                     )}
 
-                    {m.type === "image" ? (
-                      // Ảnh: rê chuột → hiện bút; bấm → mở công cụ cắt khung
-                      croppable && (
-                        <button
-                          type="button"
-                          onClick={() => setCropKey(m.key)}
-                          aria-label="Cắt khung hiển thị"
-                          className="absolute inset-0 flex items-center justify-center bg-navy-950/0 transition group-hover:bg-navy-950/35 focus-visible:bg-navy-950/35"
-                        >
-                          <span className="flex size-10 scale-75 items-center justify-center rounded-full bg-white text-navy-950 opacity-0 shadow-soft transition group-hover:scale-100 group-hover:opacity-100 in-focus-visible:opacity-100 [@media(hover:none)]:absolute [@media(hover:none)]:right-2 [@media(hover:none)]:bottom-2 [@media(hover:none)]:size-8 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
-                            <Icon name="pen" className="size-4" />
-                          </span>
-                        </button>
-                      )
-                    ) : (
+                    {m.type !== "image" && (
                       <>
                         {/* Video / link nhúng: bấm → xem trước (phát, tua, dừng) */}
                         <button
@@ -360,19 +373,9 @@ export function MediaManager({ items, onChange, error }) {
                       </>
                     )}
                     <span className="absolute top-2 left-2 flex gap-1">
-                      {rank === 0 && (
-                        <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                          Ảnh bìa
-                        </span>
-                      )}
                       {m.type !== "image" && (
                         <span className="rounded-full bg-navy-950/80 px-2 py-0.5 text-[10px] font-semibold text-white">
                           {TYPE_LABEL[m.type]}
-                        </span>
-                      )}
-                      {croppable && rank > 0 && (
-                        <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-ink">
-                          Ảnh nổi bật
                         </span>
                       )}
                     </span>
@@ -389,7 +392,7 @@ export function MediaManager({ items, onChange, error }) {
                     <IconBtn
                       label="Lên trước"
                       icon="chevronLeft"
-                      disabled={i === 0 || (!isImage(m) && i - 1 < featured)}
+                      disabled={i === 0}
                       onClick={() => move(i, i - 1)}
                     />
                     <IconBtn
@@ -406,6 +409,19 @@ export function MediaManager({ items, onChange, error }) {
         </>
       )}
 
+      {tooBig && (
+        <OversizeDialog
+          items={tooBig}
+          onClose={() => setTooBig(null)}
+          onPasteLink={() => {
+            setTooBig(null);
+            const el = linkInput.current;
+            el?.scrollIntoView({ block: "center", behavior: "smooth" });
+            setTimeout(() => el?.focus({ preventScroll: true }), 250);
+          }}
+        />
+      )}
+
       {playItem && (
         <VideoPreview
           type={playItem.type}
@@ -413,24 +429,6 @@ export function MediaManager({ items, onChange, error }) {
           poster={playItem.poster}
           name={playItem.name}
           onClose={() => setPlayKey(null)}
-        />
-      )}
-
-      {cropItem && (
-        <ImageCropper
-          item={{
-            key: cropItem.key,
-            src: previewOf(cropItem),
-            pos: cropItem.pos,
-            zoom: cropItem.zoom,
-          }}
-          rank={visual.indexOf(cropItem)}
-          onClose={() => setCropKey(null)}
-          onApply={(crop) => {
-            manualCropKeys.current.add(cropItem.key); // đã cắt tay → tự căn chỉnh không ghi đè nữa
-            update(cropItem.key, crop);
-            setCropKey(null);
-          }}
         />
       )}
     </div>
