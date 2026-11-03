@@ -752,7 +752,7 @@ function FrameGrabber({ item, onPick }) {
           });
         },
         "image/jpeg",
-        0.92,
+        0.95,
       );
     } catch {
       // Video trên máy chủ khác không cho phép đọc điểm ảnh (CORS) → không chụp được

@@ -24,6 +24,7 @@ export function ProductCard({ product: p, index = 0, size, className, sizes }) {
           src={p.cover.src}
           alt={p.title}
           fill
+          quality={90} // ảnh đại diện: nén chất lượng cao nhất (q_auto:best) cho nét
           ratio={p.cover.width && p.cover.height ? p.cover.width / p.cover.height : undefined}
           // Khung 3:4 (lg: 4:3) — tính thêm phần ảnh bị phóng khi cắt khung → ảnh bìa luôn đủ nét
           sizes={coverSizes(

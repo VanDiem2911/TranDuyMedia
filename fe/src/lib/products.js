@@ -52,6 +52,9 @@ export function toView(p) {
       src: u,
       pos: "center",
       zoom: 1,
+      // Cảnh chụp từ video → cùng kích thước video: next/image tính đúng bản cần tải khi cắt khung dọc (nét)
+      width: m.width,
+      height: m.height,
       type: "image",
       url: u,
       alt: m.alt,

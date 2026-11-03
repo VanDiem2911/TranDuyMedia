@@ -115,6 +115,7 @@ async function ProductView({ params }) {
                         alt=""
                         fill
                         sizes={coverSizes("(min-width: 1024px) 22vw, 33vw", img, 3 / 4.4)}
+                        quality={90} // ảnh nổi bật: nén chất lượng cao nhất (q_auto:best) cho nét
                         ratio={img.width && img.height ? img.width / img.height : undefined}
                         className="object-cover"
                         style={{ objectPosition: img.pos }}

@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
-import { cdn } from "@/lib/cdn";
+import { coverCdn } from "@/lib/cdn";
 import { zoomStyle } from "@/lib/crop";
 import { mediaCount } from "@/lib/media-count";
 import { cn } from "@/lib/utils";
@@ -25,8 +25,8 @@ const coverItem = (p) =>
   p.cover ?? p.media?.find((x) => x.type === "image") ?? p.media?.find((x) => x.poster) ?? null;
 const coverOf = (p) => {
   const m = coverItem(p);
-  // Thẻ 3:4 rộng ~360px → bản ~800px (đủ nét Retina) thay vì ảnh gốc
-  return m ? cdn(m.type === "image" ? m.url : m.poster, 800) : null;
+  // Thẻ 3:4 (~360×480px, Retina ×2) → bản vừa đủ phủ kín thẻ kể cả khi cắt / phóng ảnh ngang (nét)
+  return m ? coverCdn(m.type === "image" ? m.url : m.poster, m, 720, 960) : null;
 };
 
 /**

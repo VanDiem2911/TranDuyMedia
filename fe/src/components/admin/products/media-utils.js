@@ -1,5 +1,5 @@
 /** Tiện ích cho trình quản lý ảnh / video của sản phẩm (phía trình duyệt). */
-import { cdn } from "@/lib/cdn";
+import { cdn, coverCdn } from "@/lib/cdn";
 
 export const MAX_IMAGE_MB = 10;
 // Khớp UPLOAD_MAX_VIDEO_MB ở backend và giới hạn gói Cloudinary (miễn phí: 100MB / video).
@@ -129,7 +129,7 @@ export function captureFrames(url, { crossOrigin = false, at = FRAME_AT, exact =
             else finish(blobs.length ? meta(blobs) : null);
           },
           "image/jpeg",
-          0.92,
+          0.95,
         );
       } catch {
         finish(null); // video khác tên miền không cho đọc điểm ảnh (CORS)
@@ -174,12 +174,16 @@ export function checkFile(file) {
 
 /** Ảnh xem trước của một mục (tệp mới dùng object URL). */
 /**
- * Ảnh xem trước của một mục (tệp mới dùng object URL). Mặc định bản thu nhỏ ~480px (ô thư viện, ô ảnh
- * đại diện / nổi bật, popup chọn ảnh) — đủ nét màn hình Retina, nhẹ hơn ảnh gốc hàng chục lần.
- * width = 0 → ảnh gốc chất lượng cao (khung cắt ảnh).
+ * Ảnh xem trước của một mục (tệp mới dùng object URL). Mặc định: bản vừa đủ PHỦ KÍN ô ~200×270px trên màn
+ * hình Retina (ô thư viện, ô ảnh đại diện / nổi bật, popup chọn ảnh) — nét mà nhẹ hơn ảnh gốc nhiều lần,
+ * kể cả ảnh ngang đặt trong khung dọc. size = 0 → ảnh gốc (khung cắt ảnh); size = số → giới hạn bề rộng.
  */
-export const previewOf = (m, width = 480) =>
-  cdn(m.type === "image" ? (m.preview ?? m.url) : (m.poster ?? null), width || undefined);
+export const previewOf = (m, size = [400, 540]) => {
+  const src = m.type === "image" ? (m.preview ?? m.url) : (m.poster ?? null);
+  if (!size) return cdn(src);
+  if (typeof size === "number") return cdn(src, size);
+  return coverCdn(src, m, size[0], size[1]);
+};
 
 /** Địa chỉ phát của video / link nhúng (tệp mới chọn từ máy dùng object URL). */
 export const playUrl = (m) => (m.source === "file" ? m.preview : m.url);

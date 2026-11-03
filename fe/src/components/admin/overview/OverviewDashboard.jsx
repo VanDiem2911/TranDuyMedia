@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { BOOKING_STATUSES } from "@/data/bookings";
 import { api } from "@/lib/api";
-import { cdn } from "@/lib/cdn";
+import { coverCdn } from "@/lib/cdn";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "../bookings/StatusControl";
@@ -23,7 +23,7 @@ const hhmm = new Intl.DateTimeFormat("vi-VN", {
   hour12: false,
 });
 const dayMonth = (ymd) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`;
-const coverSrc = (m) => (m ? cdn(m.type === "image" ? m.url : m.poster, 128) : null); // ô 48px
+const coverSrc = (m) => (m ? coverCdn(m.type === "image" ? m.url : m.poster, m, 96, 96) : null); // ô 48px
 
 /** "3 ngày" / "5 giờ" / "12 phút" — đã chờ bao lâu */
 function waited(iso) {

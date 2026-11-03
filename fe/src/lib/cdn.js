@@ -25,3 +25,18 @@ export const cdn = (url, width) => {
   }
   return url;
 };
+
+/**
+ * Ảnh object-cover trong khung boxW × boxH (điểm ảnh thật, đã nhân mật độ màn hình): tính bề rộng cần tải
+ * để ảnh PHỦ KÍN khung mà không bị kéo giãn — ảnh ngang đặt vào khung dọc chỉ hiện một phần nên cần bản
+ * lớn hơn bề rộng khung nhiều lần; zoom (cắt khung) nhân thêm. Biết kích thước gốc → tính đúng, không vượt
+ * bản gốc; chưa biết → tải dư cho trường hợp ảnh ngang 16:9.
+ */
+export function coverCdn(url, { width: iw, height: ih, zoom } = {}, boxW, boxH) {
+  const z = Math.min(Math.max(Number(zoom) || 1, 1), 4);
+  if (iw && ih) {
+    const scale = Math.max(boxW / iw, boxH / ih) * z;
+    return cdn(url, Math.min(iw, Math.ceil(iw * scale)));
+  }
+  return cdn(url, Math.ceil(Math.max(boxW, (boxH * 16) / 9) * z));
+}
