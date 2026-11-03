@@ -49,14 +49,14 @@ function describe(err) {
  * - Họ tên & số điện thoại bắt buộc, kiểm tra khi rời ô / khi gửi (cùng quy tắc với backend).
  * - Lỗi chung / thành công hiện bằng toast; lỗi từng ô hiện ngay dưới ô đó.
  * - Ô `website` ẩn là bẫy bot (honeypot): người thật không thấy nên không điền.
- * preset: slug dịch vụ chọn sẵn (từ data-booking="slug").
+ * preset: slug dịch vụ chọn sẵn (từ data-booking="slug"). note: nội dung điền sẵn ô mô tả (data-booking-note).
  */
 const SERVICE_SLUGS = new Set(services.map((s) => s.slug));
 
-export function BookingForm({ preset: rawPreset = "", compact = false }) {
+export function BookingForm({ preset: rawPreset = "", note: presetNote = "", compact = false }) {
   // data-booking không kèm giá trị (vd. data-booking="true") → không chọn sẵn dịch vụ nào
   const preset = SERVICE_SLUGS.has(rawPreset) ? rawPreset : "";
-  const [form, setForm] = useState({ ...EMPTY, service: preset });
+  const [form, setForm] = useState({ ...EMPTY, service: preset, note: presetNote });
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -138,7 +138,7 @@ export function BookingForm({ preset: rawPreset = "", compact = false }) {
         <button
           type="button"
           onClick={() => {
-            setForm({ ...EMPTY, service: preset });
+            setForm({ ...EMPTY, service: preset, note: presetNote });
             setErrors({});
             setDone(false);
           }}

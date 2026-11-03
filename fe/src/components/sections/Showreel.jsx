@@ -16,7 +16,13 @@ import { cn } from "@/lib/utils";
  * - Luôn tự phát (kể cả khi hệ điều hành tắt hiệu ứng hoạt ảnh — Windows tắt sẵn khá phổ biến),
  *   kèm nút tạm dừng theo WCAG 2.2.2. Người dùng đã bấm dừng thì cuộn qua lại không tự phát nữa.
  */
-export function Showreel() {
+export function Showreel({
+  id = "showreel",
+  eyebrow = "Showreel",
+  title = "Đồng hành lan tỏa giá trị cùng doanh nghiệp.",
+  description = "Tổng hợp các dự án video marketing, iTVC, doanh nghiệp và sự kiện trong năm 2025 – 2026.",
+  className,
+}) {
   const { showreel } = siteConfig;
   const videoRef = useRef(null);
   const userPausedRef = useRef(false);
@@ -89,13 +95,20 @@ export function Showreel() {
   };
 
   return (
-    <section id="showreel" className="relative bg-paper section-y" data-nav-theme="light">
+    <section
+      id={id}
+      className={cn("relative bg-paper section-y", className)}
+      data-nav-theme="light"
+    >
       <Container>
-        <p className="reveal mb-4 eyebrow">Showreel</p>
+        <p className="reveal mb-4 eyebrow">{eyebrow}</p>
         {/* Mô tả canh giữa theo chiều cao tiêu đề (eyebrow nằm ngoài hàng để không lệch tâm) */}
         <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-            Một phút để thấy cách chúng tôi làm việc.
+          <h2
+            className="reveal max-w-2xl h-section text-balance"
+            style={{ "--reveal-delay": "80ms" }}
+          >
+            {title}
           </h2>
           <p
             // translate-y nhẹ: tâm hộp chữ tiêu đề lớn cao hơn tâm NHÌN (khoảng trống chừa dấu tiếng Việt ở trên)
@@ -103,7 +116,7 @@ export function Showreel() {
             className="reveal max-w-sm text-sm leading-relaxed text-ink-soft sm:translate-y-1.5 sm:text-base"
             style={{ "--reveal-delay": "160ms" }}
           >
-            Tổng hợp các dự án video marketing, iTVC, doanh nghiệp và sự kiện trong năm 2025 – 2026.
+            {description}
           </p>
         </div>
 

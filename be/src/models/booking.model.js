@@ -16,7 +16,7 @@ const bookingSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 100 },
     phone: { type: String, required: true, trim: true, index: true },
-    service: { type: String, default: null }, // slug dịch vụ (san-xuat-video…)
+    service: { type: String, default: null }, // slug dịch vụ (san-xuat-video-short…)
     date: { type: String, default: null }, // YYYY-MM-DD khách mong muốn
     budget: { type: String, default: null },
     note: { type: String, default: "", maxlength: 2000 },

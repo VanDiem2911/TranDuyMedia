@@ -2,11 +2,12 @@ import { z } from "zod";
 import { BOOKING_STATUSES as STATUSES } from "#models/booking.model.js";
 import { objectId } from "#validators/common.validator.js";
 
-// Khớp với các lựa chọn trong form ở frontend (fe/src/components/booking/BookingForm.jsx)
+// Khớp với các lựa chọn trong form ở frontend (slug trong fe/src/data/services.js — 5 dịch vụ từ 11/2026)
 export const SERVICES = [
-  "san-xuat-video",
-  "chup-anh-thuong-mai",
-  "chup-anh-su-kien",
+  "san-xuat-video-short",
+  "san-xuat-itvc-viral",
+  "phim-doanh-nghiep-su-kien",
+  "chup-anh-quang-cao",
   "cho-thue-studio",
 ];
 export const BUDGETS = ["Dưới 20 triệu", "20 – 50 triệu", "50 – 100 triệu", "Trên 100 triệu"];

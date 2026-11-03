@@ -10,14 +10,14 @@ import { cn } from "@/lib/utils";
 export const metadata = createMetadata({
   title: "Dịch vụ sản xuất video & hình ảnh",
   description:
-    "Sản xuất video marketing (video short quảng cáo, iTVC, video doanh nghiệp & sự kiện, documentary), chụp ảnh thương mại, chụp ảnh sự kiện và cho thuê studio — một ekip, trọn gói.",
+    "Sản xuất video short marketing, iTVC & viral, phim doanh nghiệp & sự kiện, chụp ảnh quảng cáo và cho thuê studio (Room 24m² & 150m²) — một ekip, trọn gói.",
   path: "/dich-vu",
   image: "/images/bts/bts-02.webp",
 });
 
 /**
  * Trang tổng hợp dịch vụ (bố cục theo trang Dịch vụ của ButStudio):
- * Hero (chữ + 3 ảnh so le) → Hành trình 5 bước (nền tối, cột ảnh nở rộng) → 3 dịch vụ zig-zag
+ * Hero (chữ + 3 ảnh so le) → Hành trình 7 bước (nền tối, cột ảnh nở rộng) → 5 dịch vụ zig-zag
  * (dẫn tới trang con /dich-vu/[slug]) → Gói gợi ý → FAQ. CTA cuối trang nằm ở footer.
  */
 export default function ServicesPage() {

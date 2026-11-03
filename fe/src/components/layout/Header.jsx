@@ -93,7 +93,7 @@ export function Header() {
           {mainNav.map((item) => {
             const active = isActive(item.href);
             const linkCls = cn(
-              "inline-flex items-center gap-1 rounded-full px-4 py-2 text-[13px] font-medium tracking-wide transition-all duration-300",
+              "inline-flex items-center gap-1 rounded-full px-4 py-2 text-[15px] font-semibold tracking-wide transition-all duration-300 xl:px-5",
               active
                 ? dark
                   ? "bg-white text-navy-900"
@@ -287,7 +287,27 @@ export function Header() {
           >
             Đặt lịch tư vấn miễn phí <Icon name="arrowRight" className="size-4" />
           </button>
-          <p className="mt-auto text-center text-xs text-ink-muted">
+          {/* Kênh mạng xã hội của studio */}
+          <ul className="mt-auto mb-5 flex justify-center gap-3">
+            {[
+              ["facebook", siteConfig.socials.facebook],
+              ["youtube", siteConfig.socials.youtube],
+              ["tiktok", siteConfig.socials.tiktok],
+            ].map(([name, href]) => (
+              <li key={name}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={name}
+                  className="flex size-11 items-center justify-center rounded-full bg-navy-900/5 text-ink transition-colors hover:bg-orange-500 hover:text-white"
+                >
+                  <Icon name={name} className="size-5" />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="text-center text-xs text-ink-muted">
             Hotline:{" "}
             <a href={siteConfig.contact.phoneHref} className="-my-2 inline-block py-2 text-ink">
               {siteConfig.contact.phone}

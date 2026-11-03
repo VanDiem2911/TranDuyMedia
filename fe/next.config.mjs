@@ -76,6 +76,22 @@ const nextConfig = {
         permanent: true,
       })),
       { source: "/studio/:slug", destination: "/san-pham", permanent: true },
+      // Dịch vụ cũ (4 mảng) → 5 dịch vụ mới (feedback 02/11) — khớp legacyServices trong src/data/services.js
+      {
+        source: "/dich-vu/san-xuat-video",
+        destination: "/dich-vu/san-xuat-video-short",
+        permanent: true,
+      },
+      {
+        source: "/dich-vu/chup-anh-thuong-mai",
+        destination: "/dich-vu/chup-anh-quang-cao",
+        permanent: true,
+      },
+      {
+        source: "/dich-vu/chup-anh-su-kien",
+        destination: "/dich-vu/phim-doanh-nghiep-su-kien",
+        permanent: true,
+      },
     ];
   },
   // Chuyển tiếp /api/v1/* sang backend → cookie đăng nhập là first-party (SameSite=Strict, không CORS)

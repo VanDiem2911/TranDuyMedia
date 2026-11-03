@@ -164,6 +164,24 @@ const paths = {
     </>
   ),
   sparkle: <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />,
+  // Tai nghe hỗ trợ (headset có mic)
+  headset: (
+    <>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <rect x="2.5" y="13" width="4" height="6" rx="1.5" />
+      <rect x="17.5" y="13" width="4" height="6" rx="1.5" />
+      <path d="M19.5 19v.5a2.5 2.5 0 0 1-2.5 2.5h-3.5" />
+      <rect x="10.5" y="20.5" width="3" height="3" rx="1" />
+    </>
+  ),
+  // Đèn studio: tấm softbox có lưới tổ ong trên chân đèn 3 càng
+  light: (
+    <>
+      <rect x="5" y="2" width="14" height="10" rx="1.5" />
+      <path d="M9.5 2v10M14.5 2v10M5 7h14" />
+      <path d="M12 12v6M12 18l-4.5 4M12 18l4.5 4M12 18v4" />
+    </>
+  ),
   external: (
     <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
   ),

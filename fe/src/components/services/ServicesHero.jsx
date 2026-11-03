@@ -5,16 +5,16 @@ import { Container } from "@/components/ui";
 import { stats } from "@/data/services";
 
 const FRAMES = [
-  { src: "/images/bts/bts-05.webp", pos: "center", h: "h-[86%]", speed: 0.05, delay: 0 },
+  { src: "/images/clips/short-3.webp", pos: "center 35%", h: "h-[86%]", speed: 0.05, delay: 0 },
   {
-    src: "/images/christmas/christmas-07.webp",
-    pos: "center 30%",
+    src: "/images/bts/bts-16.webp",
+    pos: "center 40%",
     h: "h-full",
     speed: -0.04,
     delay: 120,
   },
   {
-    src: "/images/vintage-green/vintage-green-03.webp",
+    src: "/images/studio/room-1-01.webp",
     pos: "center",
     h: "h-[86%]",
     speed: 0.07,
@@ -49,9 +49,9 @@ export function ServicesHero() {
               className="reveal mt-6 max-w-lg text-[15px] leading-relaxed text-ink-soft sm:text-base lg:mt-[clamp(1rem,2.5vh,1.5rem)] lg:text-[clamp(1rem,2.3vh,1.0625rem)]"
               style={{ "--reveal-delay": "250ms" }}
             >
-              Sản xuất video marketing, chụp ảnh thương mại, chụp ảnh sự kiện và cho thuê studio —
-              bốn dịch vụ bổ trợ nhau, được thực hiện bởi cùng một đội ngũ nên hình ảnh luôn đồng
-              bộ, tiến độ rõ ràng.
+              Video short marketing, iTVC & viral, phim doanh nghiệp & sự kiện, chụp ảnh quảng cáo
+              và cho thuê studio — năm dịch vụ bổ trợ nhau, được thực hiện bởi cùng một đội ngũ nên
+              hình ảnh luôn đồng bộ, tiến độ rõ ràng.
             </p>
             <div
               className="reveal mt-8 flex flex-wrap items-center gap-3 lg:mt-[clamp(1.25rem,3.2vh,2.25rem)]"

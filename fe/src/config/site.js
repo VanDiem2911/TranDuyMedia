@@ -28,7 +28,10 @@ export const siteConfig = {
   shortName: "TD Media",
   tagline: "Gia công nội dung truyền thông & quảng cáo",
   description:
-    "Trần Duy Media Studio – hơn 10 năm gia công nội dung truyền thông, thương mại quảng cáo: sản xuất video marketing, chụp ảnh thương mại, chụp ảnh sự kiện và cho thuê studio tại TP. Hồ Chí Minh.",
+    "Trần Duy Media Studio – hơn 10 năm gia công video, hình ảnh toàn diện cho doanh nghiệp: video short marketing, iTVC, phim doanh nghiệp & sự kiện, chụp ảnh quảng cáo và cho thuê studio tại TP. Hồ Chí Minh.",
+  // Đoạn giới thiệu ngắn ở chân trang — các từ ghép nối bằng khoảng trắng không ngắt (U+00A0) để không bị tách dòng
+  footerText:
+    "Trần Duy Media đối tác gia công video, hình ảnh thương mại quảng cáo và cho thuê studio uy tín cho doanh nghiệp.",
   url: siteUrl(),
   // API backend: gọi cùng tên miền, Next.js chuyển tiếp sang be/ (xem rewrites trong next.config.mjs)
   apiUrl: "/api/v1",
@@ -55,7 +58,7 @@ export const siteConfig = {
     phone: "097 154 2026",
     phoneRaw: "0971542026",
     phoneHref: "tel:+84971542026",
-    email: "contact@tranduymedia.vn", // TODO: thay email thật
+    email: "tranduymediagroup@gmail.com",
     address: "456/26 Huỳnh Tấn Phát, KP7, Nhà Bè",
     city: "TP. Hồ Chí Minh",
     workingHours: "Thứ 2 – Chủ nhật, 8:00 – 21:00",
@@ -67,9 +70,11 @@ export const siteConfig = {
     facebook: "https://www.facebook.com/TranDuyMedia",
     messenger: "https://m.me/TranDuyMedia",
     zalo: "https://zalo.me/0971542026",
-    youtube: "https://youtube.com/", // TODO: thay link kênh thật
-    tiktok: "https://tiktok.com/", // TODO: thay link kênh thật
+    youtube: "https://www.youtube.com/@tranduymedia/featured",
+    tiktok: "https://www.tiktok.com/@tranduymedia",
   },
+  // Link bảng giá chi tiết thuê studio (PDF / Google Drive). Để null: nút "Nhận bảng giá chi tiết" mở form đặt lịch.
+  studioPriceList: null, // TODO: điền link bảng giá khi khách gửi
   // Showreel 2026 — bản web nén từ file gốc 4K (public/videos, không commit) bằng `npm run video`.
   // Tự host (không dùng Google Drive) để điều khiển được: tự phát khi cuộn tới, chọn chất lượng 1080p.
   showreel: {
@@ -82,12 +87,13 @@ export const siteConfig = {
 };
 
 // Menu chung cho header (desktop + mobile) và footer.
+// Theo feedback 02/11: Về chúng tôi - Dịch vụ - Sản phẩm - Hậu trường - Liên hệ.
 // Không có "Trang chủ" (logo đã là đường về trang chủ). Mục có "#" là section trên trang chủ:
 // đang ở trang chủ thì cuộn mượt tới, ở trang khác thì chuyển về trang chủ rồi cuộn (SmoothScroll).
 export const mainNav = [
   { label: "Về chúng tôi", href: "/gioi-thieu" },
   { label: "Dịch vụ", href: "/dich-vu" },
   { label: "Sản phẩm", href: "/san-pham" },
-  { label: "Quy trình", href: "/#quy-trinh" },
+  { label: "Hậu trường", href: "/#hau-truong" },
   { label: "Liên hệ", href: "/#lien-he" },
 ];

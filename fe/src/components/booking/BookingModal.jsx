@@ -11,16 +11,18 @@ import { BookingForm } from "./BookingForm";
 const bullets = [
   "Phản hồi trong 24 giờ làm việc",
   "Dự toán chi tiết theo hạng mục",
-  "Tư vấn định dạng phù hợp từng kênh",
+  "Định hướng phù hợp theo mục tiêu dự án",
 ];
 
 /**
  * Popup đặt lịch dùng chung toàn site.
- * Mở bằng bất kỳ phần tử nào có thuộc tính data-booking (giá trị tuỳ chọn = slug dịch vụ để chọn sẵn).
+ * Mở bằng bất kỳ phần tử nào có thuộc tính data-booking (giá trị tuỳ chọn = slug dịch vụ để chọn sẵn);
+ * data-booking-note (tuỳ chọn) = nội dung điền sẵn ô mô tả.
  */
 export function BookingModal() {
   const [open, setOpen] = useState(false);
   const [preset, setPreset] = useState("");
+  const [note, setNote] = useState(""); // nội dung điền sẵn ô mô tả (data-booking-note)
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -30,6 +32,7 @@ export function BookingModal() {
       if (!el) return;
       e.preventDefault();
       setPreset(el.getAttribute("data-booking") || "");
+      setNote(el.getAttribute("data-booking-note") || "");
       setOpen(true);
     };
     document.addEventListener("click", onClick);
@@ -73,11 +76,17 @@ export function BookingModal() {
           <Image src="/images/bts/bts-05.webp" alt="" fill sizes="420px" className="object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-navy-950/90 via-navy-950/30 to-navy-950/10" />
           <div className="absolute inset-x-0 bottom-0 px-8 pt-8 pb-10 text-white">
-            <p className="text-[1.75rem] h-display">
-              {/* Giữ "thương hiệu" liền một dòng, xuống dòng chủ động trước vế cam */}
-              Kể chuyện <span className="whitespace-nowrap">thương hiệu</span>
+            {/* Ngắt dòng chủ động theo cụm nghĩa → không tách từ ghép (gia công, hình ảnh, doanh nghiệp) */}
+            <p className="text-[1.6rem] h-display leading-[1.32]">
+              10+ năm gia công
               <br />
-              <span className="text-orange-500">bằng hình ảnh.</span>
+              video, hình ảnh
+              <br />
+              <span className="text-orange-500">
+                toàn diện cho
+                <br />
+                doanh nghiệp.
+              </span>
             </p>
             <ul className="mt-5 space-y-2">
               {bullets.map((b) => (
@@ -109,14 +118,14 @@ export function BookingModal() {
             <h3 className="mt-2.5 text-[1.45rem] h-display text-ink sm:mt-3 sm:text-[2rem]">
               Đặt lịch tư vấn miễn phí
             </h3>
-            <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-ink-soft sm:mt-2 sm:text-[13.5px]">
-              Để lại thông tin, chúng tôi liên hệ lại trong 24 giờ để trao đổi ý tưởng và gửi dự
-              toán.
+            <p className="mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-soft sm:mt-2 sm:text-[13.5px]">
+              Cảm ơn quý khách đã quan tâm. Để lại thông tin, chúng tôi sẽ phản hồi lại trong 24 giờ
+              để trao đổi định hướng và gửi dự toán tới bạn.
             </p>
           </div>
 
           <div className="mt-4 sm:mt-6">
-            <BookingForm preset={preset} compact />
+            <BookingForm preset={preset} note={note} compact />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-ink/10 pt-4 text-[12px] text-ink-muted sm:mt-6 sm:pt-5">

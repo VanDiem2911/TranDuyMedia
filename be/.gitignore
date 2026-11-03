@@ -55,3 +55,6 @@ desktop.ini
 *.pem
 *.key
 *.crt
+
+# ---------- Cache tải / nén video (scripts/import-showcase.js) ----------
+.cache/

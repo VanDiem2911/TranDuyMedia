@@ -1,6 +1,7 @@
 import { SmartImage as Image } from "@/components/ui/SmartImage";
 import { Container } from "@/components/ui";
 import { values } from "@/data/services";
+import { cn } from "@/lib/utils";
 
 const CORNERS = [
   "top-3 left-3 border-t-2 border-l-2",
@@ -10,29 +11,33 @@ const CORNERS = [
 ];
 
 /**
- * USP "Uy tín – Trách nhiệm – Tâm huyết" dạng một DẢI PHIM: hàng lỗ răng cưa trên/dưới,
+ * USP "Uy tín – Tối ưu chi phí – Tận tâm" (feedback 02/11) dạng một DẢI PHIM: hàng lỗ răng cưa trên/dưới,
  * 3 khung hình là ảnh hậu trường thật, nhãn kiểu bảng clapper (SCENE · TAKE).
  * Rê chuột: ảnh trắng-đen → màu, 4 góc khung ngắm cam hiện ra, ● REC nhấp nháy (đồng bộ màn chào).
+ * Dùng chung: trang Về chúng tôi ("Khách hàng tin tưởng…") và "3 thế mạnh" ở trang dịch vụ.
  */
-export function Values() {
+export function Values({
+  eyebrow = "Vì sao chọn chúng tôi",
+  description = "Ba giá trị chúng tôi giữ trong mọi khung hình — từ buổi trao đổi đầu tiên đến file bàn giao cuối cùng.",
+  className,
+}) {
   return (
     <section
-      className="grain relative overflow-hidden bg-navy-950 text-white"
+      className={cn("grain relative overflow-hidden bg-navy-950 text-white", className)}
       data-nav-theme="dark"
     >
       <Container className="relative py-16 sm:py-20">
-        <p className="reveal mb-4 eyebrow">Vì sao chọn chúng tôi</p>
+        <p className="reveal mb-4 eyebrow">{eyebrow}</p>
         {/* Mô tả canh giữa theo chiều cao tiêu đề */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-            Uy tín. Trách nhiệm. <span className="text-orange-500">Tâm huyết.</span>
+            Uy tín. Tối ưu chi phí. <span className="text-orange-500">Tận tâm.</span>
           </h2>
           <p
             className="reveal max-w-sm text-base leading-relaxed text-white/65"
             style={{ "--reveal-delay": "160ms" }}
           >
-            Ba giá trị chúng tôi giữ trong mọi khung hình — từ buổi brief đầu tiên đến file bàn giao
-            cuối cùng.
+            {description}
           </p>
         </div>
 
@@ -83,7 +88,7 @@ export function Values() {
                     <span className="h-0.5 w-6 bg-orange-500 transition-all duration-500 group-hover:w-10" />
                     {v.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/75">{v.desc}</p>
+                  <p className="mt-2 text-left text-sm leading-relaxed text-white/75">{v.desc}</p>
                 </div>
               </li>
             ))}

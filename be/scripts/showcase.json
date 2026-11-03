@@ -1,0 +1,268 @@
+{
+  "$comment": "Danh sách clip sản phẩm lấy từ Google Drive của studio (thư mục THƯ VIỆN VIDEO) — chạy: npm run media:showcase. 'clips': mọi clip cần nén + đưa lên Cloudinary (key = tên tệp trên Cloudinary, drive = ID tệp Drive, đã chia sẻ công khai). 'products': sản phẩm hiển thị ở /san-pham, mỗi sản phẩm gồm 1 hoặc nhiều clip (theo key). posterAt = giây lấy khung hình làm ảnh bìa (chọn khung đẹp, không dính chữ). Thêm clip / sản phẩm mới: thêm vào đây rồi chạy lại script — clip đã có sẽ được bỏ qua. stills = ảnh tĩnh cắt từ video [key clip, giây] (tuỳ chọn, để [] nếu sản phẩm chỉ trưng bày video — ảnh bìa lấy từ posterAt của video đầu tiên). posterPos = điểm giữ lại khi cắt ảnh bìa video ngang vào khung dọc (vd \"35% 50%\").",
+  "clips": [
+    {
+      "key": "short-move-1",
+      "drive": "1N0xLQ9MLjIELUssW9a9WFTOV0nDgUL8Q",
+      "title": "MOVE - Xe điện thế hệ mới",
+      "posterAt": 19.2
+    },
+    {
+      "key": "short-move-2",
+      "drive": "19gOWdOcQEJ7L1U3_kcP_vUMFemR8IYSn",
+      "title": "MOVE - Review xe điện",
+      "posterAt": 17.3
+    },
+    {
+      "key": "short-move-3",
+      "drive": "1kMTzIS_ZRdqdJUK2LZ_uzGHoMkQrCdS4",
+      "title": "MOVE - Tư vấn tại showroom",
+      "posterAt": 22.7,
+      "posterPos": "50% 18%"
+    },
+    {
+      "key": "short-move-4",
+      "drive": "1zPvIPB-9ZIunPfEVbxpBFMmQvU-7Fbmd",
+      "title": "MOVE - Video trend",
+      "posterAt": 32
+    },
+    {
+      "key": "short-move-5",
+      "drive": "10dkR1dfhgYoWRB1rM1_-2S2GgdcurlGq",
+      "title": "MOVE - Tình huống đời thường",
+      "posterAt": 29.6
+    },
+    {
+      "key": "short-office",
+      "drive": "1LsolX8l7gcp_OGEz9F4UP0Rsk4Fx4Wn6",
+      "title": "ANSTY - Video short phụ kiện",
+      "posterAt": 9.1
+    },
+    {
+      "key": "short-lifestyle",
+      "drive": "1CVw-yoNReBBsFoim9C3cmNOmynFotqDp",
+      "title": "MOVE - Video lifestyle",
+      "posterAt": 46.5
+    },
+    {
+      "key": "short-cosmetic",
+      "drive": "1RVTZjs8e6ZcsCPgBGumzGuqQqrmUJ4Ix",
+      "title": "FOREVER-KEY - Video sản phẩm",
+      "posterAt": 4
+    },
+    {
+      "key": "itvc-elipsport-1",
+      "drive": "1Do1xT86dWGkmLEYgHWIPDtYnru8jXnfk",
+      "title": "ELIPSPORT - Ghế massage Elip G9",
+      "posterAt": 14.4,
+      "posterPos": "38% 50%"
+    },
+    {
+      "key": "itvc-elipsport-2",
+      "drive": "1O9941m5zN2_kIVmlCbgadZmp_nig7g0P",
+      "title": "ELIPSPORT - iTVC ghế massage",
+      "posterAt": 45.5,
+      "posterPos": "55% 50%"
+    },
+    {
+      "key": "talkshow-zema",
+      "drive": "1cqRx0nlGo9xbsqxoxKyXeiCblg7rUC3R",
+      "title": "ZEMA - Talkshow",
+      "posterAt": 29.2,
+      "posterPos": "45% 40%"
+    },
+    {
+      "key": "testimonial-15-years",
+      "drive": "1qeP5vcxKdpF_LNUHSAbjYeYyQG2dLDvK",
+      "title": "Teaser ra mắt sản phẩm",
+      "posterAt": 18.7,
+      "posterPos": "55% 40%"
+    },
+    {
+      "key": "corporate-move",
+      "drive": "1nWh2XfcNMhmfV130K_OL5wAXORP-9TvT",
+      "title": "MOVE - Phim giới thiệu nhà máy",
+      "posterAt": 25.8,
+      "posterPos": "50% 40%"
+    },
+    {
+      "key": "corporate-coastal",
+      "drive": "1wrkhK5Y0_b2zKbpKu7-AWbTjW5EkP1we",
+      "title": "COASTAL - Phim doanh nghiệp",
+      "posterAt": 97.1,
+      "posterPos": "56% 40%"
+    },
+    {
+      "key": "corporate-profile",
+      "drive": "1eLViBwDzLk3gfmam8rnBVyLX3tgKGjjY",
+      "title": "Đông Dương Group - Phim giới thiệu",
+      "posterAt": 65,
+      "posterPos": "50% 50%"
+    },
+    {
+      "key": "event-launch",
+      "drive": "1rz9dGvMBV3CEm-_lPJ2FFDwB-Uae9Fdl",
+      "title": "Đông Dương Group - Kỷ nguyên vươn mình",
+      "posterAt": 168.9,
+      "posterPos": "34% 50%"
+    },
+    {
+      "key": "event-tennis",
+      "drive": "1Vzh00TIE-CfTTyHSmeVl8dBJt4kM1vqN",
+      "title": "Giải tennis giao hữu doanh nghiệp",
+      "posterAt": 113.2,
+      "posterPos": "36% 50%"
+    }
+  ],
+  "products": [
+    {
+      "slug": "move-chuoi-video-short-xe-dien",
+      "title": "MOVE - Chuỗi video short xe điện",
+      "category": "Video short commercial",
+      "summary": "Video short 9:16 cho xe điện MOVE.",
+      "description": "Review, tư vấn showroom, lifestyle và nội dung bắt trend cho TikTok, Reels, Shorts.",
+      "usage": "TikTok, Facebook Reels, YouTube Shorts, quảng cáo performance",
+      "location": "Showroom MOVE & ngoại cảnh",
+      "clips": [
+        "short-move-3",
+        "short-move-1",
+        "short-move-2",
+        "short-move-4",
+        "short-move-5",
+        "short-lifestyle"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "move-phim-gioi-thieu-nha-may",
+      "title": "MOVE - Phim giới thiệu nhà máy",
+      "category": "Phim doanh nghiệp",
+      "summary": "Phim giới thiệu nhà máy xe điện MOVE.",
+      "description": "Năng lực sản xuất, dây chuyền, kiểm định chất lượng — quay 4K, dẫn dắt bởi đại diện thương hiệu.",
+      "usage": "Website, hồ sơ năng lực, truyền thông thương hiệu",
+      "location": "Nhà máy MOVE",
+      "clips": [
+        "corporate-move"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "elipsport-itvc-ghe-massage",
+      "title": "ELIPSPORT - iTVC ghế massage",
+      "category": "iTVC & Viral",
+      "summary": "iTVC ghế massage ELIPSPORT.",
+      "description": "Hình ảnh điện ảnh, chuyển động máy mượt — bản dài và bản cut cho quảng cáo.",
+      "usage": "YouTube, Facebook Ads, website thương hiệu",
+      "location": "Bối cảnh phòng khách cao cấp",
+      "clips": [
+        "itvc-elipsport-1",
+        "itvc-elipsport-2"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "dong-duong-group-phim-gioi-thieu",
+      "title": "Đông Dương Group - Phim giới thiệu",
+      "category": "Phim doanh nghiệp",
+      "summary": "Phim giới thiệu Đông Dương Group.",
+      "description": "Câu chuyện tập đoàn, con người và định hướng chuyển đổi — quay 4K, flycam, phỏng vấn.",
+      "usage": "Hồ sơ năng lực, tuyển dụng, truyền thông nội bộ",
+      "location": "Văn phòng & nhà máy Đông Dương Group",
+      "clips": [
+        "corporate-profile"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "dong-duong-group-ky-nguyen-vuon-minh",
+      "title": "Đông Dương Group - Sự kiện Kỷ nguyên vươn mình",
+      "category": "Video sự kiện",
+      "summary": "Recap sự kiện “Kỷ nguyên vươn mình”.",
+      "description": "Ekip đa máy bao quát sân khấu, khách mời và hậu trường — recap bàn giao nhanh.",
+      "usage": "Truyền thông sự kiện, fanpage, báo chí",
+      "location": "Trung tâm hội nghị",
+      "clips": [
+        "event-launch"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "coastal-phim-doanh-nghiep",
+      "title": "COASTAL - Phim doanh nghiệp",
+      "category": "Phim doanh nghiệp",
+      "summary": "Phim doanh nghiệp COASTAL.",
+      "description": "Không gian, dịch vụ và đội ngũ — hình ảnh sang trọng, nhịp dựng cuốn hút.",
+      "usage": "Website, quảng cáo thương hiệu, hồ sơ năng lực",
+      "location": "Riverside & văn phòng COASTAL",
+      "clips": [
+        "corporate-coastal"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "zema-talkshow",
+      "title": "ZEMA - Talkshow",
+      "category": "Talkshow",
+      "summary": "Talkshow thương hiệu ZEMA.",
+      "description": "Setup đa máy, âm thanh và ánh sáng chuẩn studio — dựng bản dài và clip ngắn.",
+      "usage": "Fanpage, YouTube, truyền thông thương hiệu",
+      "location": "Studio",
+      "clips": [
+        "talkshow-zema"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "forever-key-video-san-pham",
+      "title": "FOREVER-KEY - Video sản phẩm",
+      "category": "Video short commercial",
+      "summary": "Video short sản phẩm FOREVER-KEY.",
+      "description": "Quay cận sản phẩm mỹ phẩm, ánh sáng mềm, nhịp dựng nhanh cho quảng cáo.",
+      "usage": "TikTok, Reels, quảng cáo sản phẩm",
+      "location": "Studio Trần Duy Media",
+      "clips": [
+        "short-cosmetic"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "ansty-video-short-phu-kien",
+      "title": "ANSTY - Video short phụ kiện",
+      "category": "Video short commercial",
+      "summary": "Video short phụ kiện ANSTY.",
+      "description": "Kịch bản tình huống đời thường, hook mạnh — giới thiệu phụ kiện chính hãng.",
+      "usage": "TikTok, Reels, quảng cáo performance",
+      "location": "Cửa hàng & văn phòng ANSTY",
+      "clips": [
+        "short-office"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "teaser-ra-mat-san-pham",
+      "title": "Teaser ra mắt sản phẩm",
+      "category": "Testimonial",
+      "summary": "Teaser ra mắt sản phẩm.",
+      "description": "Lời chia sẻ của nhà sáng lập về sản phẩm đúc kết sau 15 năm — dựng teaser điện ảnh.",
+      "usage": "Fanpage, quảng cáo ra mắt sản phẩm",
+      "location": "Studio",
+      "clips": [
+        "testimonial-15-years"
+      ],
+      "stills": []
+    },
+    {
+      "slug": "giai-tennis-giao-huu-doanh-nghiep",
+      "title": "Giải tennis giao hữu doanh nghiệp",
+      "category": "Video sự kiện",
+      "summary": "Recap giải tennis giao hữu.",
+      "description": "Ghi hình trận đấu, khai mạc và gala tối — recap sôi động cho truyền thông nội bộ.",
+      "usage": "Truyền thông nội bộ, fanpage",
+      "location": "Sân tennis & khuôn viên ngoài trời",
+      "clips": [
+        "event-tennis"
+      ],
+      "stills": []
+    }
+  ]
+}

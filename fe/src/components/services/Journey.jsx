@@ -24,7 +24,8 @@ export function Journey() {
         <p className="reveal mb-4 eyebrow">Quy trình sản xuất</p>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="reveal max-w-xl h-section" style={{ "--reveal-delay": "80ms" }}>
-            Năm bước, từ brief đến bàn giao.
+            Bảy bước, từ <span className="whitespace-nowrap">tiếp nhận</span>{" "}
+            <span className="whitespace-nowrap text-orange-500">đến bàn giao.</span>
           </h2>
           <p
             className="reveal hidden max-w-xs text-sm text-white/60 lg:block"
@@ -35,7 +36,7 @@ export function Journey() {
         </div>
 
         {/* Desktop: các cột, cột đang chọn rộng hơn */}
-        <div className="reveal mt-10 hidden gap-4 lg:flex" style={{ "--reveal-delay": "250ms" }}>
+        <div className="reveal mt-10 hidden gap-3 lg:flex" style={{ "--reveal-delay": "250ms" }}>
           {processSteps.map((s, i) => {
             const on = active === i;
             return (
@@ -48,7 +49,7 @@ export function Journey() {
                 aria-expanded={on}
                 className={cn(
                   "relative h-[calc(var(--screen)*0.56)] min-h-[380px] overflow-hidden rounded-3xl text-left transition-[flex] duration-[800ms] ease-out",
-                  on ? "flex-[2.6]" : "flex-1",
+                  on ? "flex-[4]" : "flex-1",
                 )}
               >
                 <Image
@@ -74,7 +75,7 @@ export function Journey() {
                 {/* tên bước xoay dọc khi thu gọn */}
                 <span
                   className={cn(
-                    "absolute bottom-7 left-1/2 -translate-x-1/2 rotate-180 text-xl font-semibold whitespace-nowrap transition-all duration-500 [writing-mode:vertical-rl]",
+                    "absolute bottom-7 left-1/2 -translate-x-1/2 rotate-180 text-lg font-semibold whitespace-nowrap transition-all duration-500 [writing-mode:vertical-rl] xl:text-xl",
                     on ? "pointer-events-none opacity-0" : "opacity-100",
                   )}
                 >

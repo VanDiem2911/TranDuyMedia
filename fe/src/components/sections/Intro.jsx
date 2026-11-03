@@ -4,7 +4,8 @@ import { Button, Container } from "@/components/ui";
 import { stats } from "@/data/services";
 
 /**
- * Giới thiệu ngắn (khớp nội dung trang Về chúng tôi) + số liệu (USP: 10+ năm, trọn gói). Ảnh hậu trường xếp lệch, parallax nhẹ.
+ * Giới thiệu ngắn (khớp nội dung trang Về chúng tôi) + số liệu (USP: 10+ năm, trọn gói).
+ * Bên phải: ảnh hậu trường lớn + ảnh nhỏ (ảnh studio khách chọn — feedback 02/11) xếp lệch, parallax nhẹ.
  */
 export function Intro() {
   return (
@@ -14,10 +15,10 @@ export function Intro() {
           <div>
             <p className="reveal mb-4 eyebrow">Về Trần Duy Media</p>
             <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-              Hơn 10 năm <span className="whitespace-nowrap">đồng hành</span>,{" "}
-              <br className="max-sm:hidden" />
-              kiến tạo <span className="whitespace-nowrap">giá trị</span>{" "}
-              <span className="whitespace-nowrap">doanh nghiệp.</span>
+              <span className="whitespace-nowrap">Đồng hành</span> trên{" "}
+              <span className="whitespace-nowrap">hành trình</span>{" "}
+              <span className="whitespace-nowrap">phát triển</span>{" "}
+              <span className="whitespace-nowrap">cùng doanh nghiệp.</span>
             </h2>
             <p
               className="reveal mt-6 max-w-xl text-base leading-relaxed text-ink-soft sm:text-lg"
@@ -63,6 +64,7 @@ export function Intro() {
                 />
               </div>
             </Parallax>
+            {/* Ảnh nhỏ bên trái: thay bằng ảnh khách chọn (feedback 02/11, mục 6) */}
             <Parallax speed={-0.06} className="absolute bottom-0 left-0 w-[52%]" desktopOnly>
               <div
                 className="reveal relative aspect-square overflow-hidden rounded-2xl shadow-soft"
@@ -70,15 +72,16 @@ export function Intro() {
                 style={{ "--reveal-delay": "200ms" }}
               >
                 <Image
-                  src="/images/bts/bts-04.webp"
-                  alt="Hệ thống đèn Godox tại studio"
+                  src="/images/about-hd/studio-interview.webp"
+                  alt="Setup quay phỏng vấn tại studio Trần Duy Media"
                   fill
                   sizes="(min-width: 1024px) 26vw, 52vw"
                   className="object-cover"
+                  style={{ objectPosition: "center 55%" }}
                 />
               </div>
             </Parallax>
-            {/* Neo theo mép phải: luôn kết thúc cách mép trái ảnh (ảnh rộng 68%, sát phải) 1.5rem → không chạm ảnh */}
+            {/* Neo theo mép phải: luôn kết thúc cách mép trái ảnh lớn (rộng 68%, sát phải) 1.5rem → không chạm ảnh */}
             <span
               aria-hidden="true"
               className="absolute top-[8%] right-[calc(68%+1.5rem)] hidden text-[clamp(4.5rem,7vw,7rem)] h-display leading-none whitespace-nowrap text-paper-200 select-none lg:block"

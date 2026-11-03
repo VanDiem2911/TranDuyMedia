@@ -23,6 +23,22 @@ import DIMS from "@/data/image-dims.json";
  */
 const NEAR = "1200px";
 
+/**
+ * Ảnh trên Cloudinary: trình duyệt tải THẲNG từ CDN Cloudinary (gần người xem, có sẵn bộ đệm toàn cầu) với
+ * đúng bề rộng cần + định dạng tối ưu (AVIF/WebP theo trình duyệt) + chất lượng tự động — thay vì đi vòng qua
+ * bộ tối ưu ảnh của máy chủ Next.js (phải tải ảnh gốc về rồi nén lại → chậm lần đầu, tốn tài nguyên máy chủ).
+ * Ảnh tĩnh trong /public vẫn dùng bộ tối ưu của Next như cũ.
+ */
+const CLOUDINARY = /^https:\/\/res\.cloudinary\.com\/[^/]+\/(image|video)\/upload\//;
+export function cloudinaryLoader({ src, width, quality }) {
+  const q = quality && quality < 90 ? `q_${quality}` : quality >= 90 ? "q_auto:best" : "q_auto:good";
+  // Bỏ biến đổi cũ trong link (vd. so_auto,q_auto) rồi gắn biến đổi theo bề rộng cần hiển thị
+  return src.replace(
+    /\/upload\/(?:(?:[a-z]{1,3}_[^/,]+,?)+\/)?/,
+    `/upload/f_auto,${q},c_limit,w_${width}/`,
+  );
+}
+
 export const SmartImage = forwardRef(function SmartImage(
   { sizes, ratio, fill, onLoad, alt, autoSizes = true, ...props },
   forwardedRef,
@@ -88,6 +104,9 @@ export const SmartImage = forwardRef(function SmartImage(
   return (
     <Image
       ref={setRefs}
+      loader={
+        typeof props.src === "string" && CLOUDINARY.test(props.src) ? cloudinaryLoader : undefined
+      }
       alt={alt}
       fill={fill}
       sizes={auto ? `${auto}px` : sizes}

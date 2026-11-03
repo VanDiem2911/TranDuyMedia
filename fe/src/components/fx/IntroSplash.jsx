@@ -18,7 +18,7 @@ const FPS = 25;
  *   tên miền) hoặc bấm Quay lại / Tiến tới.
  * Gắn data-intro="skip" lên <html> → CSS ẩn ngay từ khung hình đầu.
  */
-const SKIP_SCRIPT = `try{var n=performance.getEntriesByType("navigation")[0],t=n&&n.type,r=document.referrer,s=t==="back_forward";if(!s&&t!=="reload"&&r){s=new URL(r).origin===location.origin}if(s)document.documentElement.dataset.intro="skip"}catch(e){}`;
+// SKIP_SCRIPT chạy trong <head> của layout gốc  — xem intro-skip.js
 export const introSkipped = () =>
   typeof document !== "undefined" && document.documentElement.dataset.intro === "skip";
 
@@ -86,8 +86,6 @@ export function IntroSplash() {
 
   return (
     <>
-      {/* Chạy ngay khi trình duyệt đọc tới (trước khung hình đầu) → mở tab mới từ chính website thì màn chào không kịp hiện */}
-      <script dangerouslySetInnerHTML={{ __html: SKIP_SCRIPT }} />
       <div
         id="intro"
         data-phase={open ? "out" : "in"}

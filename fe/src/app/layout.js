@@ -1,4 +1,5 @@
 import { Be_Vietnam_Pro } from "next/font/google";
+import { INTRO_SKIP_SCRIPT } from "@/components/fx/intro-skip";
 import { Toaster } from "@/components/ui/Toaster";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
@@ -73,7 +74,7 @@ const jsonLd = {
     addressCountry: "VN",
   },
   hasMap: siteConfig.contact.mapsLink,
-  sameAs: [siteConfig.socials.facebook],
+  sameAs: [siteConfig.socials.facebook, siteConfig.socials.youtube, siteConfig.socials.tiktok],
   priceRange: "$$",
 };
 
@@ -81,6 +82,14 @@ export default function RootLayout({ children }) {
   return (
     // suppressHydrationWarning: màn chào (IntroSplash) gắn data-intro lên <html> trước khi React hydrate
     <html lang={siteConfig.lang} className={sans.variable} suppressHydrationWarning>
+      <head>
+        {/* Mở sẵn kết nối tới CDN ảnh / video (Cloudinary) → ảnh sản phẩm hiện nhanh hơn */}
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        {/* Bỏ qua màn chào khi đi từ chính website sang — script thường trong <head> của layout gốc (render ở máy chủ,
+            không render lại phía trình duyệt) → chạy ngay khi đọc tới, trước khung hình đầu */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SKIP_SCRIPT }} />
+      </head>
       <body>
         {/* Khung website công khai (header, footer, cuộn mượt…) nằm ở app/(site)/layout.js;
             trang đăng nhập, quản trị và trang lỗi dùng bố cục riêng. */}

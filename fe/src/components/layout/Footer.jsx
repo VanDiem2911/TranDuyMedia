@@ -35,29 +35,53 @@ export function Footer() {
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-navy-950 via-navy-950/85 to-navy-950/55" />
         <div className="absolute inset-0 -z-10 bg-linear-to-t from-navy-950/70 via-transparent to-navy-950/70" />
         <Container className="py-20 sm:py-24">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto] lg:gap-16">
             {/* "tiếp theo" luôn đi liền nhau; từ sm ngắt dòng có chủ đích sau "tiếp theo" */}
             <h2 className="text-[2.2rem] h-display text-white text-legible sm:text-5xl lg:text-6xl">
               Bắt đầu dự án <span className="whitespace-nowrap text-orange-500">tiếp theo</span>
               <br className="max-sm:hidden" /> cùng chúng tôi.
             </h2>
-            <div className="btn-row flex flex-wrap gap-3 lg:justify-end">
-              <button
-                type="button"
-                data-booking
-                className="group inline-flex items-center gap-3 rounded-full bg-white py-1.5 pr-1.5 pl-6 text-sm font-medium text-navy-900 transition hover:bg-paper-100"
-              >
-                Đặt lịch tư vấn
-                <span className="btn-circle flex size-9 items-center justify-center rounded-full bg-orange-500 text-white transition-transform group-hover:translate-x-0.5">
-                  <Icon name="arrowRight" className="size-4" />
-                </span>
-              </button>
+            {/* Liên hệ (feedback 02/11): 2 nút cùng chiều cao trên 1 hàng — đặt lịch (cam, nổi bật) + hotline
+                (viền sáng) — email là dòng chữ nhẹ bên dưới → rõ thứ bậc, gọn, không nặng như 3 khối xếp chồng */}
+            {/* Điện thoại: 2 nút trải ngang & thẳng mép trái với tiêu đề; máy tính: cụm co gọn, canh giữa nhau */}
+            <div className="flex w-full flex-col gap-5 sm:w-fit sm:items-center lg:justify-self-end">
+              <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-center">
+                <button
+                  type="button"
+                  data-booking
+                  // Điện thoại: chữ + mũi tên canh giữa (cùng kiểu nút số điện thoại bên dưới → 2 nút cân nhau);
+                  // máy tính: giữ vòng tròn mũi tên trắng sát mép phải
+                  className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-full bg-orange-500 px-6 text-[15px] font-semibold text-white shadow-[0_14px_32px_-16px_rgba(248,104,8,0.8)] transition hover:bg-orange-600 sm:gap-3 sm:pr-1.5"
+                >
+                  <Icon name="calendar" className="size-[18px] sm:hidden" />
+                  Đặt lịch tư vấn
+                  <Icon
+                    name="arrowRight"
+                    className="size-[18px] transition-transform group-hover:translate-x-0.5 sm:hidden"
+                  />
+                  <span className="btn-circle hidden size-10 items-center justify-center rounded-full bg-white text-orange-600 transition-transform group-hover:translate-x-0.5 sm:flex">
+                    <Icon name="arrowRight" className="size-[18px]" />
+                  </span>
+                </button>
+                <a
+                  href={contact.phoneHref}
+                  className="inline-flex h-13 items-center justify-center gap-2.5 rounded-full border border-white/30 bg-white/5 px-6 text-[15px] font-semibold tracking-wide text-white backdrop-blur-sm transition hover:border-white hover:bg-white hover:text-navy-900"
+                >
+                  <Icon name="phone" className="size-[18px] text-orange-500" />
+                  {contact.phone}
+                </a>
+              </div>
               <a
-                href={contact.phoneHref}
-                className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-navy-950/40 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-white hover:text-navy-900"
+                href={`mailto:${contact.email}`}
+                className="group inline-flex items-center gap-2.5 text-sm text-white/70 transition-colors hover:text-white"
               >
-                <Icon name="phone" className="size-4" />
-                {contact.phone}
+                <Icon name="mail" className="size-4 text-orange-500" />
+                <span>
+                  Hoặc gửi email:{" "}
+                  <span className="font-medium text-white/90 transition-colors group-hover:text-orange-400">
+                    {contact.email}
+                  </span>
+                </span>
               </a>
             </div>
           </div>
@@ -72,9 +96,7 @@ export function Footer() {
           <Link href="/" aria-label={`${siteConfig.name} – Trang chủ`} className="inline-block">
             <Logo light className="h-16" />
           </Link>
-          <p className="mt-5 max-w-sm text-left text-sm leading-relaxed">
-            {siteConfig.description}
-          </p>
+          <p className="mt-5 max-w-sm text-left text-sm leading-relaxed">{siteConfig.footerText}</p>
           <ul className="mt-6 flex gap-3">
             {socialLinks.map(([name, href]) => (
               <li key={name}>

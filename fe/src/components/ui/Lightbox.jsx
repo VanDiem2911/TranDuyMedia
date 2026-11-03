@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { SmartImage as Image } from "@/components/ui/SmartImage";
 import { Icon } from "@/components/icons";
 import { lockScroll, pad } from "@/lib/utils";
@@ -9,6 +10,8 @@ import { lockScroll, pad } from "@/lib/utils";
  * Lightbox xem ảnh toàn màn hình.
  * props: images [{src, alt, type?, url?, poster?}], index (number|null), onClose, onChange(index)
  * type "video" → trình phát video · "embed" → khung YouTube / Vimeo.
+ * Render thẳng vào <body> (portal): nếu nằm trong khối có transform (vd. hiệu ứng .reveal, carousel)
+ * thì position: fixed bị tính theo khối đó → popup kẹt trong section, bị header đè.
  */
 export function Lightbox({ images, index, onClose, onChange }) {
   const open = index !== null && index !== undefined;
@@ -50,7 +53,7 @@ export function Lightbox({ images, index, onClose, onChange }) {
     </button>
   );
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-100 flex [animation:fadeIn_.3s_ease-out_both] items-center justify-center bg-navy-950/95 backdrop-blur-sm"
       role="dialog"
@@ -151,6 +154,7 @@ export function Lightbox({ images, index, onClose, onChange }) {
           )}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

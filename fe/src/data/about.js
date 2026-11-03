@@ -1,5 +1,5 @@
 // Nội dung trang "Về chúng tôi". Thứ tự theo hồ sơ khách hàng: câu chuyện → tầm nhìn → sứ mệnh →
-// chuẩn mực sản xuất → năng lực sản xuất → hậu trường.
+// chuẩn mực sản xuất → hệ sinh thái dịch vụ (năng lực sản xuất) → vì sao chọn chúng tôi.
 // Ảnh /images/about-hd/* là ảnh HD gốc do studio cung cấp (WebP, cạnh dài ≤ 3200px);
 // /images/about/reel-* là khung hình trích từ showreel 2026 — chỉ giữ cho khung thành phẩm chưa có ảnh chụp.
 
@@ -18,87 +18,83 @@ export const aboutHeaderColumns = [
 
 // Hồ sơ doanh nghiệp — thông tin nhanh
 export const companyFacts = [
-  { label: "Thương hiệu", value: "Trần Duy Media Studio" },
-  { label: "Lĩnh vực", value: "Nội dung truyền thông, thương mại quảng cáo" },
+  { label: "Thương hiệu", value: "Trần Duy Media" },
+  { label: "Lĩnh vực", value: "Gia công video, hình ảnh thương mại quảng cáo" },
   { label: "Kinh nghiệm", value: "Hơn 10 năm thực chiến" },
-  { label: "Phương châm", value: "Uy tín – Trách nhiệm – Tâm huyết" },
+  { label: "Phương châm", value: "Uy tín – Tối ưu chi phí – Tận tâm" },
 ];
 
-// 3 ảnh hồ sơ — đủ 3 mảng chính: quay video (ảnh cao bên trái) · chụp ảnh thương mại · chụp sự kiện
-export const profileImages = [
-  { src: H("camera-operator"), alt: "Quay phim với máy cinema tại studio", pos: "center 40%" },
-  {
-    src: H("jewelry-shoot"),
-    alt: "Buổi chụp ảnh thương mại cho cửa hàng trang sức",
-    pos: "center 40%",
-  },
-  {
-    src: H("event-backdrop"),
-    alt: "Chụp ảnh sự kiện tiệc tất niên doanh nghiệp",
-    pos: "center 45%",
-  },
-];
+// Ảnh đại diện phần câu chuyện — khách chọn để lại 1 ảnh (feedback 02/11)
+export const profileImage = {
+  src: H("camera-operator-bw"),
+  alt: "Quay phim với máy cinema tại studio Trần Duy Media",
+  pos: "center 30%",
+};
 
-// Các định dạng đã sản xuất (theo showreel)
-export const formats = [
+// Hệ sinh thái dịch vụ cốt lõi (feedback 02/11) — danh sách chữ + ảnh cuộn ngang, mỗi mục dẫn tới trang dịch vụ
+export const ecosystem = [
+  {
+    name: "Sản xuất video short thương mại",
+    desc: "TikTok, Reels, Shorts — nhịp nhanh, bám xu hướng.",
+    src: "/images/clips/short-6.webp", // ảnh dọc 9:16 → phủ kín thẻ 4:5 (ảnh reel-short có viền đen 2 bên)
+    pos: "center 35%",
+    href: "/dich-vu/san-xuat-video-short",
+  },
   {
     name: "TVC & iTVC",
-    desc: "Quảng cáo truyền hình và online — kịch bản, casting, quay, dựng, chỉnh màu.",
-    src: H("tvc-bedroom"),
-    pos: "center 45%",
+    desc: "Quảng cáo truyền hình và online — kịch bản, casting, quay, dựng.",
+    // Khung hình iTVC lấy trọn ghế + người mẫu (khung dọc cắt từ ảnh ngang vẫn đủ nét)
+    src: "/images/services/itvc-elip-2.webp",
+    pos: "58% 50%",
+    href: "/dich-vu/san-xuat-itvc-viral",
   },
   {
-    name: "Video ngắn thương mại",
-    desc: "Video dọc 9:16 cho TikTok, Reels, Shorts — nhịp nhanh, bám xu hướng.",
-    src: A("reel-short"),
-    pos: "center",
+    name: "Sản xuất phim doanh nghiệp",
+    desc: "Năng lực, nhà xưởng, quy trình — phục vụ đấu thầu, tuyển dụng.",
+    src: H("corporate-team"),
+    pos: "center 40%",
+    href: "/dich-vu/phim-doanh-nghiep-su-kien",
   },
   {
-    name: "Documentary",
-    desc: "Phim tài liệu, chân dung nhà sáng lập, câu chuyện thương hiệu.",
-    src: H("interview"),
-    pos: "center 35%",
-  },
-  {
-    name: "Talkshow & phỏng vấn",
-    desc: "Setup nhiều máy, âm thanh, ánh sáng cho talkshow, podcast, phỏng vấn.",
+    name: "Video documentary, talkshow & testimonial",
+    desc: "Chân dung nhà sáng lập, phỏng vấn, talkshow đa máy.",
+    // Ảnh dọc gốc độ phân giải cao (1920×2560) → sắc nét trong thẻ dọc 4:5
     src: H("talkshow-set"),
-    pos: "center 55%",
+    pos: "center 45%",
+    href: "/dich-vu/phim-doanh-nghiep-su-kien",
   },
   {
-    name: "Video sự kiện",
-    desc: "Ghi hình và recap hội nghị, khai trương, ra mắt sản phẩm — bàn giao nhanh.",
-    src: H("event-hall"),
-    pos: "center 60%",
+    name: "Quay phim và chụp ảnh sự kiện",
+    desc: "Hội nghị, khai trương, tất niên — bàn giao nhanh.",
+    src: H("event-ballroom"),
+    pos: "center 45%",
+    href: "/dich-vu/phim-doanh-nghiep-su-kien",
   },
   {
-    name: "Phim doanh nghiệp",
-    desc: "Giới thiệu năng lực, nhà xưởng, quy trình — phục vụ đấu thầu và tuyển dụng.",
-    src: H("corporate-aerial"),
-    pos: "center",
+    name: "Cho thuê studio",
+    desc: "Room 24m² & 150m² — sẵn đèn, phông nền, thuê theo giờ.",
+    // Ảnh dọc gốc (1365×2048) → nét trong thẻ 4:5 (ảnh studio 150m² gốc chỉ 1200px, dễ mờ khi cắt dọc)
+    src: "/images/studio/room-1-01.webp",
+    pos: "center 40%",
+    href: "/dich-vu/cho-thue-studio",
   },
 ];
 
-// Giá trị cốt lõi — 3 khung ảnh đứng: tầm nhìn · sứ mệnh · chuẩn mực sản xuất (danh sách bên dưới)
-export const vision = {
-  title: "Tầm nhìn",
-  en: "Vision",
-  text: "Trở thành đối tác sản xuất nội dung thương mại quảng cáo được khách hàng tin tưởng lựa chọn hàng đầu.",
-  image: H("event-screen"),
-  imagePos: "center 45%",
-};
+// Giá trị cốt lõi — thẻ khung hình điện ảnh (bản ban đầu): ảnh nền phủ màu, câu tuyên bố lớn.
+// Nội dung text theo feedback 02/11.
 export const mission = {
   title: "Sứ mệnh",
   en: "Mission",
-  text: "Đồng hành cùng kiến tạo và nâng tầm giá trị doanh nghiệp — mỗi sản phẩm phục vụ đúng mục tiêu kinh doanh của khách hàng.",
-  image: H("handshake"),
-  imagePos: "center 40%",
+  text: "Đồng hành cùng kiến tạo và nâng tầm giá trị doanh nghiệp — mỗi sản phẩm phục vụ đúng mục tiêu của khách hàng với mức chi phí tối ưu nhất.",
+  image: "/images/bts/bts-05.webp",
+  imagePos: "center 35%",
 };
-export const standardsCard = {
-  title: "Chuẩn mực sản xuất",
-  en: "Standards",
-  image: H("tvc-monitor"),
-  imagePos: "center 45%",
+export const vision = {
+  title: "Tầm nhìn",
+  en: "Vision",
+  text: "Định hình là đối tác uy tín hàng đầu trong ngành gia công nội dung thương mại quảng cáo.",
+  image: "/images/about/reel-aerial.webp",
+  imagePos: "center 60%",
 };
 
 // Chuẩn mực sản xuất — Trần Duy Media cam kết trong mọi dự án (theo hồ sơ doanh nghiệp)
@@ -125,32 +121,26 @@ export const productionStandards = [
   },
 ];
 
-// Hậu trường & năng lực thiết bị
-export const capabilities = [
-  {
-    icon: "camera",
-    title: "Máy quay cinema & gimbal",
-    desc: "Quay 4K, ống kính đa tiêu cự, gimbal, flycam.",
-  },
-  {
-    icon: "sparkle",
-    title: "Hệ đèn studio chuyên nghiệp",
-    desc: "Đèn Godox công suất lớn, softbox, đèn LED.",
-  },
-  {
-    icon: "studio",
-    title: "Studio tối giản tại Nhà Bè",
-    desc: "Bố trí setup linh hoạt, thuê theo giờ.",
-  },
-  {
-    icon: "film",
-    title: "Ekip trọn gói",
-    desc: "Đạo diễn, quay phim, nhiếp ảnh, dựng phim, hậu kỳ.",
-  },
-];
-
-export const behindImages = [
-  { src: H("documentary-set"), alt: "Ekip quay phim tài liệu tại bối cảnh", pos: "22% 50%" },
-  { src: H("lighting-setup"), alt: "Setup ánh sáng Godox tại studio", pos: "center 55%" },
-  { src: H("product-shoot"), alt: "Chụp sản phẩm tại studio", pos: "center 40%" },
+// Hậu trường sản xuất — 3 hàng ảnh lướt ngang (trang chủ, trang dịch vụ); chia đều 18 ảnh cho 3 hàng.
+// Lưu ý: kho ảnh có nhiều ảnh giống hệt nhau dưới tên khác (vd. bts-11 = crew-portrait) — đã lọc để không lặp. Ảnh thật do studio gửi (feedback 02/11).
+const B = (n) => `/images/bts/bts-${n}.webp`;
+export const btsGallery = [
+  { src: B("11"), alt: "Đạo diễn hình ảnh trên trường quay", pos: "center 35%" },
+  { src: B("14"), alt: "Quay TVC tại bối cảnh phòng ngủ", pos: "center" },
+  { src: B("09"), alt: "Setup máy quay cinema & gimbal", pos: "center" },
+  { src: B("12"), alt: "Quay phỏng vấn tại bối cảnh", pos: "center" },
+  { src: B("13"), alt: "Theo dõi khung hình qua monitor", pos: "center" },
+  { src: B("15"), alt: "Quay video short tại studio", pos: "center" },
+  { src: B("16"), alt: "Quay sản phẩm ghế massage với crane", pos: "center" },
+  { src: B("17"), alt: "Setup talkshow tại studio", pos: "center" },
+  { src: B("08"), alt: "Hệ thống đèn và softbox tại Box Studio", pos: "center" },
+  { src: B("10"), alt: "Quay cận cảnh sản phẩm", pos: "center" },
+  { src: H("camera-operator"), alt: "Quay phim với máy cinema", pos: "center 35%" },
+  { src: H("jewelry-team"), alt: "Buổi chụp thương mại cho cửa hàng trang sức", pos: "center" },
+  { src: H("talkshow-set"), alt: "Setup talkshow nhiều máy quay", pos: "center 55%" },
+  { src: B("03"), alt: "Hậu trường buổi chụp tại studio", pos: "center" },
+  { src: B("05"), alt: "Ekip quay phim trên trường quay", pos: "center" },
+  { src: H("jewelry-shoot"), alt: "Chụp sản phẩm trang sức", pos: "center 40%" },
+  { src: B("07"), alt: "Hệ thống đèn tại Box Studio", pos: "center" },
+  { src: H("interview-elder"), alt: "Phỏng vấn documentary", pos: "center 40%" },
 ];

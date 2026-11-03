@@ -105,10 +105,18 @@ export function PageHeader({
             ))}
           </ol>
         </nav>
-        <p className="mt-6 [animation:fadeUp_1s_.1s_both] eyebrow text-white/80 text-legible">
-          {eyebrow || breadcrumb || title}
-        </p>
-        <h1 className="mt-4 [animation:fadeUp_1s_.2s_both] text-[2.3rem] h-display text-legible-lg sm:text-5xl lg:text-[3.75rem]">
+        {/* eyebrow={false}: không hiện dòng nhỏ trên tiêu đề */}
+        {eyebrow !== false && (
+          <p className="mt-6 [animation:fadeUp_1s_.1s_both] eyebrow text-white/80 text-legible">
+            {eyebrow || breadcrumb || title}
+          </p>
+        )}
+        <h1
+          className={cn(
+            eyebrow === false ? "mt-6" : "mt-4",
+            "[animation:fadeUp_1s_.2s_both] text-[2.3rem] h-display text-legible-lg sm:text-5xl lg:text-[3.75rem]",
+          )}
+        >
           {title}
         </h1>
         {description && (

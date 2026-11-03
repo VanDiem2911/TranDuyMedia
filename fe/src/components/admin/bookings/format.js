@@ -1,6 +1,10 @@
-import { services } from "@/data/services";
+import { legacyServices, services } from "@/data/services";
 
-const SERVICE_TITLE = Object.fromEntries(services.map((s) => [s.slug, s.title]));
+// Yêu cầu cũ (trước khi đổi sang 5 dịch vụ) vẫn hiện đúng tên dịch vụ lúc khách đặt
+const SERVICE_TITLE = {
+  ...Object.fromEntries(Object.entries(legacyServices).map(([slug, v]) => [slug, v.title])),
+  ...Object.fromEntries(services.map((s) => [s.slug, s.title])),
+};
 
 export const serviceLabel = (slug) => (slug ? (SERVICE_TITLE[slug] ?? slug) : "Chưa xác định");
 

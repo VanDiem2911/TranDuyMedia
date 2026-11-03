@@ -180,17 +180,16 @@ export function Hero() {
 
             <SplitText
               as="h1"
-              text="Kể câu chuyện thương hiệu bằng ngôn ngữ điện ảnh"
-              accent="ngôn ngữ điện ảnh"
+              text="Đối tác gia công video, hình ảnh toàn diện cho doanh nghiệp"
+              accent="toàn diện cho doanh nghiệp"
               accentClass="text-orange-500"
-              breakBefore="bằng"
-              breakMobile
-              keep={["câu chuyện", "thương hiệu", "ngôn ngữ", "điện ảnh"]}
+              breakBefore="toàn"
+              keep={["Đối tác", "gia công", "hình ảnh", "toàn diện", "doanh nghiệp"]}
               visible={ready}
               manual
               step={55}
               baseDelay={650}
-              className="mt-6 text-[clamp(2.3rem,min(6.6vw,8.6svh),6.2rem)] h-display leading-[1.14] text-white text-legible-lg sm:mt-7 short-m:mt-4 short-m:text-[2.05rem] short-d:mt-5"
+              className="mt-6 text-[clamp(2.1rem,min(5.4vw,7.6svh),5.4rem)] h-display leading-[1.3] text-balance text-white text-legible-lg sm:mt-7 short-m:mt-4 short-m:text-[1.9rem] short-d:mt-5"
             />
 
             <p
@@ -199,8 +198,8 @@ export function Hero() {
                 anim("[animation:fadeUp_1s_1.4s_both]"),
               )}
             >
-              Hơn 10 năm gia công video marketing, chụp ảnh thương mại, sự kiện và cho thuê studio
-              cho doanh nghiệp.
+              Hơn 10 năm sản xuất video marketing, iTVC, phim doanh nghiệp, chụp ảnh quảng cáo và
+              cho thuê studio.
             </p>
 
             <div
@@ -233,15 +232,11 @@ export function Hero() {
         {/* Thanh thông tin đáy — thẳng hàng với container */}
         <Container className={cn("pb-6 sm:pb-8", anim("[animation:fadeIn_1.2s_2s_both]"))}>
           <div className="flex items-center justify-between gap-6 border-t border-white/15 pt-5 text-[11px] tracking-[0.2em] text-white/70 uppercase">
-            {/* Chú thích ảnh đang chiếu */}
+            {/* Số thứ tự ảnh đang chiếu (không hiện chú thích ảnh — feedback khách hàng) */}
             <p className="hidden min-w-0 items-center gap-3 md:flex">
               <span className="font-semibold text-white tabular-nums">
                 {pad(idx + 1)}
                 <span className="text-white/40"> / {pad(SLIDES.length)}</span>
-              </span>
-              <span className="h-px w-6 shrink-0 bg-white/30" />
-              <span key={idx} className="[animation:fadeIn_.8s_ease-out_both] truncate">
-                {SLIDES[idx].alt}
               </span>
             </p>
 

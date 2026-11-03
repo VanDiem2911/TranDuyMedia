@@ -24,10 +24,12 @@ export function toView(p) {
     type: m.type, // image | video | embed
     url: m.url,
     poster: m.poster,
+    duration: m.duration ?? null,
     alt: m.alt || p.title,
   }));
+  // Thư viện: video / link nhúng đứng trước, ảnh sau (ảnh bìa & cụm ảnh tiêu biểu vẫn chỉ lấy ẢNH — xem dưới)
   const images = media.length
-    ? media
+    ? [...media.filter((m) => m.type !== "image"), ...media.filter((m) => m.type === "image")]
     : [{ src: "/images/og-image.png", pos: "center", type: "image" }];
   // Ảnh bìa + ảnh nổi bật chỉ lấy ẢNH (video chỉ hiện trong thư viện); không có ảnh nào → dùng ảnh đại diện video
   const photos = images.filter((m) => m.type === "image");
@@ -48,6 +50,8 @@ export function toView(p) {
     count: mediaCount(media),
     cover,
     covers: featured.slice(0, 3),
+    // Sản phẩm chỉ có video (không có ảnh) → trang chi tiết dùng bố cục riêng cho video
+    videoOnly: photos.length === 0 && images.some((m) => m.type !== "image"),
     images,
   };
 }
@@ -105,4 +109,44 @@ export async function getProduct(slug) {
   } catch {
     return null;
   }
+}
+
+/**
+ * "Sản phẩm khác" — đề xuất tự động theo mức liên quan với sản phẩm đang xem:
+ * cùng danh mục (+6) · cùng loại ảnh / video (+3) · cùng bối cảnh studio (+2) · trùng từ khoá trong
+ * danh mục / tiêu đề (+1 mỗi từ). Bằng điểm → ưu tiên sản phẩm đứng gần trong danh sách (thứ tự quản trị).
+ * Lấy tối đa 2 sản phẩm liên quan nhất + 1 sản phẩm khác loại (nếu có) để người xem khám phá thêm.
+ */
+const STOP = new Set(["và", "cho", "của", "video", "ảnh", "bộ", "-", "&", "the", "a"]);
+const words = (s = "") =>
+  new Set(
+    s
+      .toLowerCase()
+      .normalize("NFC")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length > 1 && !STOP.has(w)),
+  );
+
+export function relatedProducts(current, products, n = 3) {
+  const idx = products.findIndex((x) => x.slug === current.slug);
+  const key = words(`${current.category} ${current.title}`);
+  const scored = products
+    .filter((x) => x.slug !== current.slug)
+    .map((x, i) => {
+      let score = 0;
+      if (x.category === current.category) score += 6;
+      if (x.kind && x.kind === current.kind) score += 3;
+      if (x.set && x.set === current.set) score += 2;
+      for (const w of words(`${x.category} ${x.title}`)) if (key.has(w)) score += 1;
+      const pos = products.indexOf(x);
+      return { x, score, dist: Math.abs(pos - (idx < 0 ? i : idx)) };
+    })
+    .sort((a, b) => b.score - a.score || a.dist - b.dist);
+
+  const picked = scored.slice(0, Math.max(0, n - 1)).map((s) => s.x);
+  // Ô cuối: 1 sản phẩm khác loại (ảnh ↔ video) gần nhất để gợi mở thêm; không có thì lấy tiếp theo điểm
+  const different = scored.find((s) => s.x.kind !== current.kind && !picked.includes(s.x));
+  const next = different ?? scored.find((s) => !picked.includes(s.x));
+  if (next && picked.length < n) picked.push(next.x);
+  return picked;
 }

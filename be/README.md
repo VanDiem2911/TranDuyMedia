@@ -140,3 +140,26 @@ ADMIN_NAME=Quản trị viên
 ```bash
 npm run secret        # chạy 2 lần → dán vào JWT_ACCESS_SECRET và JWT_REFRESH_SECRET
 ```
+
+## Video sản phẩm (Drive → nén → Cloudinary)
+
+Clip trưng bày ở trang **Sản phẩm** và lưới clip ở các **trang dịch vụ** lấy từ thư mục Google Drive của studio,
+được nén rồi lưu trên Cloudinary (không để trong mã nguồn — video quá nặng cho git / hosting).
+
+```bash
+npm run media:showcase                      # xử lý mọi clip trong scripts/showcase.json, bỏ qua clip đã có
+npm run media:showcase -- --only event-launch,short-move-1
+npm run media:showcase -- --force           # nén & tải lên lại toàn bộ
+npm run media:showcase -- --no-db           # không ghi MongoDB (chỉ Cloudinary + media-library.json)
+npm run media:showcase -- --cache D:\cache  # thư mục lưu tệp tải về / tệp nén (mặc định be/.cache/media)
+```
+
+- **Danh sách clip & sản phẩm**: `scripts/showcase.json` — `clips` (key, ID tệp Drive, tiêu đề) và `products`
+  (slug, tiêu đề, danh mục, mô tả, danh sách clip). Tệp trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết".
+- **Nén**: H.264 MP4 (+faststart), cạnh dài ≤ 1920px, ≤ 30fps, CRF 22 có trần bitrate để mỗi tệp < ~95MB
+  (Cloudinary gói Free giới hạn 100MB/video). Dùng ffmpeg của gói `ffmpeg-static` (máy mới: chạy
+  `npm approve-scripts ffmpeg-static` rồi `npm install` nếu npm chặn script tải ffmpeg) hoặc ffmpeg trong PATH.
+- **Kết quả**: video ở `<CLOUDINARY_FOLDER>/showcase/<key>`; `fe/src/data/media-library.json` (ID Drive → link MP4,
+  ảnh bìa) — commit tệp này để website dùng; sản phẩm `kind: "video"` được tạo / cập nhật trong MongoDB
+  (xếp trước các bộ ảnh). Website tự làm mới danh sách sản phẩm sau vài phút (hoặc sửa 1 sản phẩm trong trang quản trị).
+- Sau khi tạo, sản phẩm chỉnh sửa / sắp xếp / ẩn được trong trang quản trị như sản phẩm thường.

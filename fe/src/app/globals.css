@@ -444,9 +444,15 @@ html[data-intro="skip"] #intro {
 .marquee-track.reverse {
   animation-direction: reverse;
 }
-/* Dừng khi rê chuột vào, hoặc khi dùng bàn phím (Tab) focus vào một thẻ bên trong */
-.marquee:hover .marquee-track,
-.marquee:focus-within .marquee-track {
+/* Dừng khi rê chuột vào (chỉ thiết bị có chuột thật — trên điện thoại, chạm vào sẽ "kẹt" trạng thái :hover
+   khiến dải dừng mãi), hoặc khi dùng bàn phím (Tab) focus vào một thẻ bên trong */
+@media (hover: hover) and (pointer: fine) {
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+.marquee:focus-visible .marquee-track,
+.marquee:has(:focus-visible) .marquee-track {
   animation-play-state: paused;
 }
 

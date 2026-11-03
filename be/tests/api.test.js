@@ -229,7 +229,7 @@ describe("API v1", () => {
       const res = await withCsrf(request(app)).post("/api/v1/bookings").send({
         name: "Nguyễn Văn A",
         phone: "+84 971 542 026",
-        service: "san-xuat-video",
+        service: "san-xuat-video-short",
         date: "",
         budget: "20 – 50 triệu",
         note: "TVC 30s ra mắt sản phẩm",
