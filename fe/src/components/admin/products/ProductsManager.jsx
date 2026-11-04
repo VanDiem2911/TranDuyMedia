@@ -393,54 +393,63 @@ export function ProductsManager() {
                   </span>
                 )}
                 <div className="absolute inset-0 bg-linear-to-t from-navy-950/85 via-navy-950/10 to-transparent" />
-                {/* Góc trái: thể loại + trạng thái hiển thị */}
-                <span className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
-                  <span className="rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-eyebrow text-white uppercase">
-                    {p.category}
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                      p.published ? "bg-emerald-500 text-white" : "bg-white text-ink",
-                    )}
-                  >
+                {/*
+                  Hàng trên cùng (thẳng hàng, cùng chiều cao 28px):
+                  trái  = thể loại (dài → cắt "…", rê chuột xem đủ) + trạng thái hiển thị ngay dưới;
+                  phải  = NGÔI SAO nổi bật (giữ nguyên kích thước, không bao giờ bị thể loại lấn).
+                */}
+                <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col items-start gap-1.5">
+                    <span
+                      title={p.category}
+                      className="block h-7 max-w-full truncate rounded-full bg-orange-500 px-2.5 text-[10px] leading-7 font-semibold tracking-eyebrow text-white uppercase"
+                    >
+                      {p.category}
+                    </span>
                     <span
                       className={cn(
-                        "size-1.5 rounded-full",
-                        p.published ? "bg-white" : "bg-ink/40",
+                        "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold whitespace-nowrap",
+                        p.published ? "bg-emerald-500 text-white" : "bg-white text-ink",
                       )}
+                    >
+                      <span
+                        className={cn(
+                          "size-1.5 rounded-full",
+                          p.published ? "bg-white" : "bg-ink/40",
+                        )}
+                      />
+                      {p.published ? "Đang hiển thị" : "Đang ẩn"}
+                    </span>
+                  </div>
+                  {/* NGÔI SAO nổi bật — bấm để đánh dấu / bỏ (tối đa MAX_PINNED) */}
+                  <button
+                    type="button"
+                    onClick={() => togglePin(p)}
+                    disabled={busy === p.id}
+                    aria-pressed={Boolean(p.pinnedAt)}
+                    aria-label={
+                      p.pinnedAt ? `Bỏ nổi bật “${p.title}”` : `Đánh dấu nổi bật “${p.title}”`
+                    }
+                    title={
+                      p.pinnedAt
+                        ? "Bỏ nổi bật"
+                        : "Đánh dấu nổi bật — hiển thị đầu tiên ở trang Sản phẩm"
+                    }
+                    className={cn(
+                      "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-full shadow-md transition active:scale-95 disabled:opacity-60",
+                      p.pinnedAt
+                        ? "bg-orange-500 px-2.5 text-[11px] font-semibold whitespace-nowrap text-white hover:bg-orange-600"
+                        : "w-7 bg-white/95 text-ink-soft hover:scale-110 hover:text-orange-500",
+                    )}
+                  >
+                    <Icon
+                      name="star"
+                      className="size-3.5"
+                      {...(p.pinnedAt ? { fill: "currentColor", strokeWidth: 0 } : {})}
                     />
-                    {p.published ? "Đang hiển thị" : "Đang ẩn"}
-                  </span>
-                </span>
-                {/* Góc phải: NGÔI SAO nổi bật — bấm để đánh dấu / bỏ (tối đa MAX_PINNED) */}
-                <button
-                  type="button"
-                  onClick={() => togglePin(p)}
-                  disabled={busy === p.id}
-                  aria-pressed={Boolean(p.pinnedAt)}
-                  aria-label={
-                    p.pinnedAt ? `Bỏ nổi bật “${p.title}”` : `Đánh dấu nổi bật “${p.title}”`
-                  }
-                  title={
-                    p.pinnedAt
-                      ? "Bỏ nổi bật"
-                      : "Đánh dấu nổi bật — hiển thị đầu tiên ở trang Sản phẩm"
-                  }
-                  className={cn(
-                    "absolute top-3 right-3 inline-flex h-9 items-center justify-center gap-1.5 rounded-full shadow-md transition active:scale-95 disabled:opacity-60",
-                    p.pinnedAt
-                      ? "bg-orange-500 px-3 text-[12px] font-semibold text-white hover:bg-orange-600"
-                      : "w-9 bg-white/95 text-ink-soft hover:scale-110 hover:text-orange-500",
-                  )}
-                >
-                  <Icon
-                    name="star"
-                    className="size-[18px]"
-                    {...(p.pinnedAt ? { fill: "currentColor", strokeWidth: 0 } : {})}
-                  />
-                  {p.pinnedAt && "Nổi bật"}
-                </button>
+                    {p.pinnedAt && "Nổi bật"}
+                  </button>
+                </div>
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                   <p className="text-[11px] tracking-eyebrow text-white/60 uppercase">
                     {mediaCount(p.media ?? [])}
