@@ -112,7 +112,8 @@ async function ServiceView({ params }) {
           <Pricing
             slug={s.slug}
             plans={s.pricing.plans}
-            title={`Báo giá ${s.title.toLowerCase()}.`}
+            // Chỉ viết thường CHỮ ĐẦU (đứng sau "Báo giá") — giữ nguyên chữ hoa có chủ đích: "iTVC, Viral"
+            title={`Báo giá ${s.title.charAt(0).toLowerCase()}${s.title.slice(1)}.`}
           />
           {/* 8 — Hậu trường (dùng chung) */}
           <BehindScenes id="hau-truong-dich-vu" />
