@@ -145,7 +145,7 @@ export class ProductService {
     const others = await this.repo.pinned(id);
     if (others.length >= MAX_PINNED) {
       throw ApiError.conflict(
-        `Chỉ ghim được tối đa ${MAX_PINNED} sản phẩm nổi bật. Hãy bỏ ghim một sản phẩm trước khi ghim “${p.title}”. Đang ghim: ${others.map((o) => `“${o.title}”`).join(", ")}.`,
+        `Chỉ được tối đa ${MAX_PINNED} sản phẩm nổi bật. Hãy bỏ nổi bật một sản phẩm rồi đánh dấu “${p.title}”. Đang nổi bật: ${others.map((o) => `“${o.title}”`).join(", ")}.`,
         {
           code: "PIN_LIMIT",
           details: [{ field: "pinned", message: `Tối đa ${MAX_PINNED} sản phẩm` }],

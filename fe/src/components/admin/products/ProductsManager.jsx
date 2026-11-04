@@ -20,7 +20,19 @@ import {
 } from "./jobs";
 import { ProductEditor } from "./ProductEditor";
 
-/** Số sản phẩm được ghim nổi bật tối đa — khớp MAX_PINNED ở backend (be/src/models/product.model.js). */
+/**
+ * Thứ tự giống hệt backend (product.repository SORT): nổi bật trước (đánh dấu sau → đứng trước),
+ * còn lại theo thứ tự quản trị rồi mới nhất trước → đổi nổi bật là sắp xếp lại NGAY trên máy.
+ */
+const byDisplayOrder = (a, b) => {
+  const pa = a.pinnedAt ? Date.parse(a.pinnedAt) : 0;
+  const pb = b.pinnedAt ? Date.parse(b.pinnedAt) : 0;
+  if (pa !== pb) return pb - pa;
+  if ((a.order ?? 0) !== (b.order ?? 0)) return (a.order ?? 0) - (b.order ?? 0);
+  return Date.parse(b.createdAt ?? 0) - Date.parse(a.createdAt ?? 0);
+};
+
+/** Số sản phẩm nổi bật tối đa (hiển thị đầu tiên ở trang Sản phẩm, như ghim TikTok) — khớp MAX_PINNED ở backend (be/src/models/product.model.js). */
 const MAX_PINNED = 5;
 
 /** Ảnh bìa: ảnh bìa chọn riêng → ảnh đầu tiên trong thư viện → ảnh đại diện video (khớp toView). */
@@ -114,7 +126,7 @@ export function ProductsManager() {
         body: { published: !p.published },
       });
       setItems((list) => list.map((x) => (x.id === p.id ? res.data : x)));
-      await revalidateSite();
+      revalidateSite(); // chạy nền — không bắt người dùng chờ
       toast.success(
         res.data.published
           ? "Khách đã có thể xem sản phẩm này trên website."
@@ -129,28 +141,38 @@ export function ProductsManager() {
   };
 
   /**
-   * Ghim / bỏ ghim nổi bật (tối đa MAX_PINNED): sản phẩm ghim hiện ĐẦU trang Sản phẩm, ghim sau đứng trước —
-   * như ghim video trên TikTok. Đã đủ → backend báo thân thiện kèm tên các sản phẩm đang ghim.
+   * Đánh dấu / bỏ nổi bật — phản hồi TỨC THÌ: ngôi sao đổi màu và thẻ chuyển vị trí ngay trên máy
+   * (cập nhật lạc quan), lưu lên máy chủ chạy nền; máy chủ báo lỗi → trả lại như cũ và báo lỗi.
+   * Làm mới website chạy nền, không bắt người dùng chờ; không tải lại cả danh sách.
    */
   const togglePin = async (p) => {
     const pin = !p.pinnedAt;
     if (pin && pinnedCount >= MAX_PINNED) {
       toast.warning(
-        `Chỉ ghim được tối đa ${MAX_PINNED} sản phẩm nổi bật. Hãy bỏ ghim một sản phẩm (bấm ngôi sao màu cam) trước khi ghim “${p.title}”.`,
+        `Hãy bỏ nổi bật một sản phẩm khác (bấm “★ Nổi bật” trên thẻ) rồi đánh dấu “${p.title}”.`,
         { title: `Đã đủ ${MAX_PINNED} sản phẩm nổi bật` },
       );
       return;
     }
-    setBusy(p.id);
-    try {
-      await api(`/products/${p.id}/pin`, { method: "POST", body: { pinned: pin } });
-      await revalidateSite();
-      load(); // thứ tự thay đổi: sản phẩm ghim lên đầu
-      toast.success(
-        pin ? `“${p.title}” đã lên đầu trang Sản phẩm.` : `“${p.title}” trở về vị trí thường.`,
-        { title: pin ? "Đã ghim nổi bật" : "Đã bỏ ghim" },
+    const before = items;
+    const patchItem = (data) =>
+      setItems((list) =>
+        list.map((x) => (x.id === p.id ? { ...x, ...data } : x)).sort(byDisplayOrder),
       );
+    patchItem({ pinnedAt: pin ? new Date().toISOString() : null });
+    setBusy(p.id);
+    toast.success(
+      pin
+        ? `“${p.title}” sẽ hiển thị đầu tiên ở trang Sản phẩm.`
+        : `“${p.title}” trở về vị trí thường trong danh sách.`,
+      { title: pin ? "Đã đánh dấu nổi bật" : "Đã bỏ nổi bật" },
+    );
+    try {
+      const res = await api(`/products/${p.id}/pin`, { method: "POST", body: { pinned: pin } });
+      patchItem({ pinnedAt: res.data.pinnedAt ?? null }); // giờ chính xác của máy chủ
+      revalidateSite(); // chạy nền
     } catch (err) {
+      setItems(before); // trả lại như cũ
       if (err?.code === "PIN_LIMIT")
         toast.warning(err.message, { title: `Đã đủ ${MAX_PINNED} sản phẩm nổi bật` });
       else toast.error(describeError(err), { title: "Chưa cập nhật được" });
@@ -217,7 +239,7 @@ export function ProductsManager() {
     <div className="space-y-5 sm:space-y-6">
       {/* Thanh công cụ */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-ink-soft">
+        <p className="min-w-0 text-sm text-ink-soft sm:flex-1">
           {items ? (
             <>
               <strong className="font-semibold text-ink">{items.length}</strong> sản phẩm -{" "}
@@ -225,12 +247,22 @@ export function ProductsManager() {
               <span className={cn(pinnedCount >= MAX_PINNED && "font-semibold text-orange-600")}>
                 {pinnedCount}/{MAX_PINNED} nổi bật
               </span>
+              <span className="mt-1 flex items-center gap-1.5 text-left text-xs text-ink-muted">
+                <Icon
+                  name="star"
+                  className="size-3.5 shrink-0 text-orange-500"
+                  fill="currentColor"
+                  strokeWidth={0}
+                />
+                Sản phẩm nổi bật luôn hiển thị đầu tiên ở trang Sản phẩm (tối đa {MAX_PINNED}) — bấm
+                ngôi sao trên thẻ để đánh dấu hoặc bỏ.
+              </span>
             </>
           ) : (
             "Đang tải…"
           )}
         </p>
-        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+        <div className="flex flex-wrap gap-2 sm:shrink-0 sm:flex-nowrap">
           <label className="relative w-full sm:w-72 sm:flex-none">
             <Icon
               name="search"
@@ -381,19 +413,19 @@ export function ProductsManager() {
                     {p.published ? "Đang hiển thị" : "Đang ẩn"}
                   </span>
                 </span>
-                {/* Góc phải: NGÔI SAO ghim nổi bật — bấm để ghim / bỏ ghim (tối đa MAX_PINNED) */}
+                {/* Góc phải: NGÔI SAO nổi bật — bấm để đánh dấu / bỏ (tối đa MAX_PINNED) */}
                 <button
                   type="button"
                   onClick={() => togglePin(p)}
                   disabled={busy === p.id}
                   aria-pressed={Boolean(p.pinnedAt)}
                   aria-label={
-                    p.pinnedAt ? `Bỏ ghim nổi bật “${p.title}”` : `Ghim nổi bật “${p.title}”`
+                    p.pinnedAt ? `Bỏ nổi bật “${p.title}”` : `Đánh dấu nổi bật “${p.title}”`
                   }
                   title={
                     p.pinnedAt
-                      ? "Bỏ ghim nổi bật"
-                      : `Ghim nổi bật — hiện đầu trang Sản phẩm (tối đa ${MAX_PINNED})`
+                      ? "Bỏ nổi bật"
+                      : "Đánh dấu nổi bật — hiển thị đầu tiên ở trang Sản phẩm"
                   }
                   className={cn(
                     "absolute top-3 right-3 inline-flex h-9 items-center justify-center gap-1.5 rounded-full shadow-md transition active:scale-95 disabled:opacity-60",

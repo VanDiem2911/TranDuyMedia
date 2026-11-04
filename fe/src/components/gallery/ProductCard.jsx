@@ -40,13 +40,6 @@ export function ProductCard({ product: p, index = 0, size, className, sizes }) {
       <span className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-orange-500 px-3 py-1.5 text-[10px] font-semibold tracking-[0.18em] whitespace-nowrap text-white uppercase shadow-[0_6px_18px_-6px_rgba(248,104,8,0.7)] sm:tracking-eyebrow">
         {p.category}
       </span>
-      {/* Sản phẩm được ghim nổi bật ở trang quản trị (luôn đứng đầu danh sách) */}
-      {p.pinned && (
-        <span className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap text-orange-600 uppercase shadow-sm">
-          <Icon name="star" className="size-3" fill="currentColor" strokeWidth={0} />
-          Nổi bật
-        </span>
-      )}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-6">
         <div>
           <p className="text-[11px] tracking-eyebrow text-white/60 uppercase">{p.count}</p>

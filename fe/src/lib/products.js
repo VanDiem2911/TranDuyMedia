@@ -76,8 +76,6 @@ export function toView(p) {
     setName: p.location,
     set: p.studioSet,
     kind: p.kind,
-    // Ghim nổi bật ở trang quản trị → đứng đầu danh sách (backend đã sắp xếp) + huy hiệu "Nổi bật"
-    pinned: Boolean(p.pinnedAt),
     // Số lượng hiển thị theo đúng loại tệp: "15 ảnh · 01 video", "03 video", "16 ảnh"
     count: mediaCount(media),
     cover,
