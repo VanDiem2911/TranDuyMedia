@@ -77,6 +77,14 @@ async function ServiceView({ params }) {
           eyebrow={`Dịch vụ ${s.number} / 0${services.length}`}
           slug={s.slug}
           segments={s.heroClip}
+          // Khung hình đầu đoạn video của dịch vụ (public/media/hero/<slug>.webp — cắt từ showreel)
+          poster={s.heroClip?.length ? `/media/hero/${s.slug}.webp` : undefined}
+          // Đoạn video riêng của dịch vụ (cắt sẵn từ showreel theo heroClip, 1080p + 720p, phát lặp)
+          clip={
+            s.heroClip?.length
+              ? { hd: `/media/hero/${s.slug}-hd.mp4`, sd: `/media/hero/${s.slug}-sd.mp4` }
+              : undefined
+          }
         />
       )}
 

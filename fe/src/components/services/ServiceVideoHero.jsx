@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { preload } from "react-dom";
 import { SmartImage as Image } from "@/components/ui/SmartImage";
 import { Icon } from "@/components/icons";
 import { Container } from "@/components/ui";
@@ -49,14 +50,29 @@ const KEEP = [
 const keepWords = (str) =>
   KEEP.reduce((acc, k) => acc.split(k).join(k.replace(/ /g, "\u00a0")), str ?? "");
 
-export function ServiceVideoHero({ title, description, eyebrow, slug, segments }) {
+export function ServiceVideoHero({ title, description, eyebrow, slug, segments, poster, clip }) {
   const ref = useRef(null);
+  // Ảnh chờ = ĐÚNG khung hình đầu đoạn video của dịch vụ (không phải màn "Hello!" mở đầu showreel) và tải
+  // ưu tiên cao → trong lúc video tải, người xem đã thấy đúng cảnh sắp phát, chuyển sang video liền mạch.
+  const still = poster || siteConfig.showreel.poster;
+  preload(still, { as: "image", fetchPriority: "high" });
   // Phụ thuộc bằng chuỗi (luôn 1 phần tử, so sánh theo giá trị) — mảng đoạn được tạo mới mỗi lần render
   const segKey = JSON.stringify(segments?.length ? segments : null);
+  const clipKey = JSON.stringify(clip ?? null);
 
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
+    // Đoạn video RIÊNG của dịch vụ (vài MB, cắt sẵn đúng các cảnh) → phát lặp ngay, không phải tải showreel
+    // 32MB rồi tua tới giữa video. 1080p cho màn rộng, 720p cho điện thoại / chế độ tiết kiệm dữ liệu.
+    const own = JSON.parse(clipKey);
+    if (own) {
+      const wide = window.matchMedia("(min-width: 768px)").matches;
+      v.loop = true;
+      v.src = wide && !navigator.connection?.saveData ? own.hd : own.sd;
+      v.play().catch(() => {}); // trình duyệt chặn tự phát → giữ ảnh chờ
+      return;
+    }
     const segs = JSON.parse(segKey);
     let k = 0;
     const jump = () => {
@@ -71,10 +87,11 @@ export function ServiceVideoHero({ title, description, eyebrow, slug, segments }
     v.addEventListener("loadedmetadata", jump, { once: true });
     v.addEventListener("timeupdate", onTime);
     v.loop = !segs;
-    v.src = pickShowreelSrc();
+    // #t=… : trình duyệt xin ngay phần dữ liệu ở đầu đoạn cần phát thay vì từ giây 0 → hiện video nhanh hơn
+    v.src = segs ? `${pickShowreelSrc()}#t=${segs[0][0]}` : pickShowreelSrc();
     v.play().catch(() => {}); // trình duyệt chặn tự phát → giữ ảnh poster
     return () => v.removeEventListener("timeupdate", onTime);
-  }, [segKey]);
+  }, [segKey, clipKey]);
 
   return (
     <section
@@ -83,11 +100,11 @@ export function ServiceVideoHero({ title, description, eyebrow, slug, segments }
     >
       <video
         ref={ref}
-        poster={siteConfig.showreel.poster}
+        poster={still}
         muted
         playsInline
         autoPlay
-        preload="metadata"
+        preload="auto"
         aria-hidden="true"
         className="absolute inset-0 -z-20 size-full object-cover"
       />
