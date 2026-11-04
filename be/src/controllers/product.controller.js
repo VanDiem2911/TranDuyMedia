@@ -40,6 +40,18 @@ export const productController = {
     res.status(204).end();
   },
 
+  async checkSlug(req, res) {
+    const { slug, exceptId } = req.validated.query;
+    ok(res, await productService.checkSlug(slug, exceptId));
+  },
+
+  async setPinned(req, res) {
+    ok(
+      res,
+      toPublic(await productService.setPinned(req.validated.params.id, req.validated.body.pinned)),
+    );
+  },
+
   async restore(req, res) {
     ok(res, toPublic(await productService.restore(req.validated.params.id, req.user.id)));
   },

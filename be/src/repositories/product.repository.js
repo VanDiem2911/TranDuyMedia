@@ -3,7 +3,9 @@ import { MongoRepository } from "#repositories/base.repository.js";
 import { undoable } from "#utils/undo.js";
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const SORT = { order: 1, createdAt: -1 };
+// Sản phẩm ghim nổi bật đứng đầu (ghim sau → trước; chưa ghim = null nằm sau cùng khi sắp giảm dần),
+// còn lại theo thứ tự quản trị rồi mới nhất trước
+const SORT = { pinnedAt: -1, order: 1, createdAt: -1 };
 
 /** Repository sản phẩm — mọi truy vấn bỏ qua bản ghi đã xoá mềm. */
 export class ProductRepository extends MongoRepository {
@@ -27,6 +29,27 @@ export class ProductRepository extends MongoRepository {
 
   findById(id) {
     return this.findOne({ _id: id, deletedAt: null });
+  }
+
+  /** Sản phẩm (chưa xoá) đang dùng đường dẫn này — để báo rõ tên trong thông báo trùng. */
+  slugOwner(slug, exceptId) {
+    return this.model
+      .findOne(
+        { slug, deletedAt: null, ...(exceptId && { _id: { $ne: exceptId } }) },
+        { title: 1, slug: 1 },
+      )
+      .lean();
+  }
+
+  /** Các sản phẩm đang ghim nổi bật (chưa xoá), ghim gần nhất trước. */
+  pinned(exceptId) {
+    return this.model
+      .find(
+        { pinnedAt: { $ne: null }, deletedAt: null, ...(exceptId && { _id: { $ne: exceptId } }) },
+        { title: 1, pinnedAt: 1 },
+      )
+      .sort({ pinnedAt: -1 })
+      .lean();
   }
 
   async slugTaken(slug, exceptId) {
@@ -58,12 +81,12 @@ export class ProductRepository extends MongoRepository {
     return this.findOne({ _id: id, deletedAt: undoable() });
   }
 
-  /** Khôi phục sản phẩm đã xoá mềm (kèm slug mới nếu slug cũ đã bị sản phẩm khác dùng). */
-  async restore(id, { slug }) {
+  /** Khôi phục sản phẩm đã xoá mềm (patch: thay đổi kèm theo, vd. bỏ ghim khi đã đủ số ghim). */
+  async restore(id, patch = {}) {
     const doc = await this.model
       .findOneAndUpdate(
         { _id: id, deletedAt: undoable() },
-        { $set: { deletedAt: null, deletedBy: null, slug } },
+        { $set: { deletedAt: null, deletedBy: null, ...patch } },
         { new: true },
       )
       .lean();

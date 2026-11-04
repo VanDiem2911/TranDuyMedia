@@ -226,7 +226,7 @@ export function OverviewDashboard() {
               <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <Icon name="check" className="size-5" strokeWidth={2.5} />
               </span>
-              <p className="mt-4 font-semibold text-ink">Đã xử lý hết yêu cầu</p>
+              <p className="mt-4 font-semibold text-ink">Đã giải quyết hết yêu cầu</p>
               <p className="mt-1 text-center text-sm text-ink-soft">
                 Yêu cầu mới từ website sẽ hiện ở đây.
               </p>
@@ -266,7 +266,7 @@ export function OverviewDashboard() {
                       x.published ? "bg-emerald-50 text-emerald-700" : "bg-paper text-ink-muted",
                     )}
                   >
-                    {x.published ? "Hiển thị" : "Đang ẩn"}
+                    {x.published ? "Đang hiển thị" : "Đang ẩn"}
                   </span>
                 </li>
               ))}

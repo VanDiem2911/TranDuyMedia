@@ -164,6 +164,8 @@ const paths = {
     </>
   ),
   sparkle: <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />,
+  // Ngôi sao (sản phẩm nổi bật)
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
   // Tai nghe hỗ trợ (headset có mic)
   headset: (
     <>

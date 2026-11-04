@@ -144,14 +144,13 @@ export function StatusSegmented({ value, onChange, disabled }) {
             disabled={disabled}
             onClick={() => !on && onChange(s.value)}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[13px] font-semibold ring-1 transition",
+              "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-center text-[12px] leading-tight font-semibold ring-1 transition sm:text-[13px]",
               on ? s.active : "bg-white text-ink-soft ring-ink/5 hover:text-ink",
             )}
           >
             <span className={cn("size-1.5 shrink-0 rounded-full", on ? "bg-white" : s.dot)} />
-            {/* Điện thoại: chữ ngắn để không bị cắt "Chưa giải ..." */}
-            <span className="truncate sm:hidden">{s.short}</span>
-            <span className="truncate max-sm:hidden">{s.label}</span>
+            {/* Cùng chữ với danh sách; điện thoại hẹp → tự xuống dòng gọn trong nút, không đổi tên */}
+            <span>{s.label}</span>
           </button>
         );
       })}

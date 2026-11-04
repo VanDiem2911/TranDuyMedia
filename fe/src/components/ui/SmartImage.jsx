@@ -31,7 +31,8 @@ const NEAR = "1200px";
  */
 const CLOUDINARY = /^https:\/\/res\.cloudinary\.com\/[^/]+\/(image|video)\/upload\//;
 export function cloudinaryLoader({ src, width, quality }) {
-  const q = quality && quality < 90 ? `q_${quality}` : quality >= 90 ? "q_auto:best" : "q_auto:good";
+  const q =
+    quality && quality < 90 ? `q_${quality}` : quality >= 90 ? "q_auto:best" : "q_auto:good";
   // Bỏ biến đổi cũ trong link (vd. so_auto,q_auto) rồi gắn biến đổi theo bề rộng cần hiển thị
   return src.replace(
     /\/upload\/(?:(?:[a-z]{1,3}_[^/,]+,?)+\/)?/,

@@ -5,6 +5,8 @@ import { validate } from "#middlewares/validate.js";
 import {
   createProductSchema,
   listProductsQuerySchema,
+  pinProductSchema,
+  slugCheckQuerySchema,
   productIdSchema,
   productSlugSchema,
   updateProductSchema,
@@ -20,6 +22,14 @@ router.get(
   noStore,
   validate(listProductsQuerySchema, "query"),
   productController.listAll,
+);
+// Kiểm tra đường dẫn còn trống (đặt trước "/manage/:id")
+router.get(
+  "/manage/slug-check",
+  requireAdmin,
+  noStore,
+  validate(slugCheckQuerySchema, "query"),
+  productController.checkSlug,
 );
 router.get(
   "/manage/:id",
@@ -43,6 +53,15 @@ router.delete(
   noStore,
   validate(productIdSchema, "params"),
   productController.remove,
+);
+// Ghim / bỏ ghim nổi bật (tối đa 5)
+router.post(
+  "/:id/pin",
+  requireAdmin,
+  noStore,
+  validate(productIdSchema, "params"),
+  validate(pinProductSchema),
+  productController.setPinned,
 );
 // Hoàn tác xoá (xoá mềm)
 router.post(

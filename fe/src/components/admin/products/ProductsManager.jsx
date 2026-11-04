@@ -20,6 +20,9 @@ import {
 } from "./jobs";
 import { ProductEditor } from "./ProductEditor";
 
+/** Số sản phẩm được ghim nổi bật tối đa — khớp MAX_PINNED ở backend (be/src/models/product.model.js). */
+const MAX_PINNED = 5;
+
 /** Ảnh bìa: ảnh bìa chọn riêng → ảnh đầu tiên trong thư viện → ảnh đại diện video (khớp toView). */
 const coverItem = (p) =>
   p.cover ?? p.media?.find((x) => x.type === "image") ?? p.media?.find((x) => x.poster) ?? null;
@@ -125,6 +128,37 @@ export function ProductsManager() {
     }
   };
 
+  /**
+   * Ghim / bỏ ghim nổi bật (tối đa MAX_PINNED): sản phẩm ghim hiện ĐẦU trang Sản phẩm, ghim sau đứng trước —
+   * như ghim video trên TikTok. Đã đủ → backend báo thân thiện kèm tên các sản phẩm đang ghim.
+   */
+  const togglePin = async (p) => {
+    const pin = !p.pinnedAt;
+    if (pin && pinnedCount >= MAX_PINNED) {
+      toast.warning(
+        `Chỉ ghim được tối đa ${MAX_PINNED} sản phẩm nổi bật. Hãy bỏ ghim một sản phẩm (bấm ngôi sao màu cam) trước khi ghim “${p.title}”.`,
+        { title: `Đã đủ ${MAX_PINNED} sản phẩm nổi bật` },
+      );
+      return;
+    }
+    setBusy(p.id);
+    try {
+      await api(`/products/${p.id}/pin`, { method: "POST", body: { pinned: pin } });
+      await revalidateSite();
+      load(); // thứ tự thay đổi: sản phẩm ghim lên đầu
+      toast.success(
+        pin ? `“${p.title}” đã lên đầu trang Sản phẩm.` : `“${p.title}” trở về vị trí thường.`,
+        { title: pin ? "Đã ghim nổi bật" : "Đã bỏ ghim" },
+      );
+    } catch (err) {
+      if (err?.code === "PIN_LIMIT")
+        toast.warning(err.message, { title: `Đã đủ ${MAX_PINNED} sản phẩm nổi bật` });
+      else toast.error(describeError(err), { title: "Chưa cập nhật được" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   /** Hoàn tác xoá: khôi phục sản phẩm (xoá mềm) và làm mới website. */
   const restore = async (p) => {
     const id = toast.loading(`Đang khôi phục “${p.title}”…`, { title: "Đang hoàn tác" });
@@ -176,6 +210,7 @@ export function ProductsManager() {
   };
 
   const visibleCount = (items ?? []).filter((p) => p.published).length;
+  const pinnedCount = (items ?? []).filter((p) => p.pinnedAt).length;
 
   return (
     // Khoảng cách giữa các khối = padding trên của <main> (5 / sm:6) → thanh công cụ cách đều trên / dưới
@@ -186,7 +221,10 @@ export function ProductsManager() {
           {items ? (
             <>
               <strong className="font-semibold text-ink">{items.length}</strong> sản phẩm -{" "}
-              {visibleCount} đang hiển thị - {items.length - visibleCount} đang ẩn
+              {visibleCount} đang hiển thị - {items.length - visibleCount} đang ẩn -{" "}
+              <span className={cn(pinnedCount >= MAX_PINNED && "font-semibold text-orange-600")}>
+                {pinnedCount}/{MAX_PINNED} nổi bật
+              </span>
             </>
           ) : (
             "Đang tải…"
@@ -323,20 +361,54 @@ export function ProductsManager() {
                   </span>
                 )}
                 <div className="absolute inset-0 bg-linear-to-t from-navy-950/85 via-navy-950/10 to-transparent" />
-                <span className="absolute top-3 left-3 rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-eyebrow text-white uppercase">
-                  {p.category}
+                {/* Góc trái: thể loại + trạng thái hiển thị */}
+                <span className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+                  <span className="rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-eyebrow text-white uppercase">
+                    {p.category}
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                      p.published ? "bg-emerald-500 text-white" : "bg-white text-ink",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        p.published ? "bg-white" : "bg-ink/40",
+                      )}
+                    />
+                    {p.published ? "Đang hiển thị" : "Đang ẩn"}
+                  </span>
                 </span>
-                <span
+                {/* Góc phải: NGÔI SAO ghim nổi bật — bấm để ghim / bỏ ghim (tối đa MAX_PINNED) */}
+                <button
+                  type="button"
+                  onClick={() => togglePin(p)}
+                  disabled={busy === p.id}
+                  aria-pressed={Boolean(p.pinnedAt)}
+                  aria-label={
+                    p.pinnedAt ? `Bỏ ghim nổi bật “${p.title}”` : `Ghim nổi bật “${p.title}”`
+                  }
+                  title={
+                    p.pinnedAt
+                      ? "Bỏ ghim nổi bật"
+                      : `Ghim nổi bật — hiện đầu trang Sản phẩm (tối đa ${MAX_PINNED})`
+                  }
                   className={cn(
-                    "absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                    p.published ? "bg-emerald-500 text-white" : "bg-white text-ink",
+                    "absolute top-3 right-3 inline-flex h-9 items-center justify-center gap-1.5 rounded-full shadow-md transition active:scale-95 disabled:opacity-60",
+                    p.pinnedAt
+                      ? "bg-orange-500 px-3 text-[12px] font-semibold text-white hover:bg-orange-600"
+                      : "w-9 bg-white/95 text-ink-soft hover:scale-110 hover:text-orange-500",
                   )}
                 >
-                  <span
-                    className={cn("size-1.5 rounded-full", p.published ? "bg-white" : "bg-ink/40")}
+                  <Icon
+                    name="star"
+                    className="size-[18px]"
+                    {...(p.pinnedAt ? { fill: "currentColor", strokeWidth: 0 } : {})}
                   />
-                  {p.published ? "Đang hiển thị" : "Đang ẩn"}
-                </span>
+                  {p.pinnedAt && "Nổi bật"}
+                </button>
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                   <p className="text-[11px] tracking-eyebrow text-white/60 uppercase">
                     {mediaCount(p.media ?? [])}
@@ -429,7 +501,7 @@ export function ProductsManager() {
   );
 }
 
-function Action({ label, icon, danger, ...props }) {
+function Action({ label, icon, danger, active, ...props }) {
   return (
     <button
       type="button"
@@ -439,8 +511,11 @@ function Action({ label, icon, danger, ...props }) {
         "flex size-10 items-center justify-center rounded-full text-ink-soft ring-1 ring-ink/10 transition disabled:opacity-40",
         danger
           ? "hover:bg-red-600 hover:text-white hover:ring-red-600"
-          : "hover:bg-paper hover:text-ink",
+          : active
+            ? "bg-orange-500 text-white ring-orange-500 hover:bg-orange-600"
+            : "hover:bg-paper hover:text-ink",
       )}
+      aria-pressed={active === undefined ? undefined : active}
       {...props}
     >
       <Icon name={icon} className="size-4" />

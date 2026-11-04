@@ -163,3 +163,12 @@ npm run media:showcase -- --cache D:\cache  # thư mục lưu tệp tải về /
   ảnh bìa) — commit tệp này để website dùng; sản phẩm `kind: "video"` được tạo / cập nhật trong MongoDB
   (xếp trước các bộ ảnh). Website tự làm mới danh sách sản phẩm sau vài phút (hoặc sửa 1 sản phẩm trong trang quản trị).
 - Sau khi tạo, sản phẩm chỉnh sửa / sắp xếp / ẩn được trong trang quản trị như sản phẩm thường.
+
+## Quy tắc sản phẩm
+
+- **Đường dẫn (slug) là duy nhất, không tự thêm hậu tố.** Tạo / sửa / hoàn tác xoá mà đường dẫn đã có sản phẩm
+  khác dùng → `409 SLUG_TAKEN` (kèm tên sản phẩm đang dùng, `details[0].field = "slug"`). Trang quản trị kiểm tra
+  ngay khi gõ qua `GET /api/v1/products/manage/slug-check?slug=…&exceptId=…` → `{ available, message? }`.
+- **Ghim nổi bật tối đa 5 sản phẩm** (`MAX_PINNED`, `be/src/models/product.model.js`):
+  `POST /api/v1/products/:id/pin` với `{ "pinned": true | false }`. Ghim thứ 6 → `409 PIN_LIMIT` (kèm tên các sản
+  phẩm đang ghim). Sản phẩm ghim đứng đầu mọi danh sách, ghim sau đứng trước (`pinnedAt` giảm dần).

@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
 export const PRODUCT_KINDS = ["photo", "video"];
+/** Số sản phẩm được ghim nổi bật tối đa (hiện đầu trang Sản phẩm, như ghim video TikTok). */
+export const MAX_PINNED = 5;
 export const MEDIA_ITEM_TYPES = ["image", "video", "embed"]; // embed = YouTube / Vimeo
 
 /**
@@ -44,6 +46,8 @@ const productSchema = new mongoose.Schema(
     featured: { type: [mediaItemSchema], default: [] },
     published: { type: Boolean, default: true, index: true },
     order: { type: Number, default: 0 },
+    // Ghim nổi bật: thời điểm ghim (null = không ghim). Ghim sau → đứng trước.
+    pinnedAt: { type: Date, default: null },
     // Xoá mềm: bản ghi + tệp trên Cloudinary vẫn giữ (khôi phục / đối soát được), chỉ ẩn khỏi mọi truy vấn
     deletedAt: { type: Date, default: null, index: true },
     deletedBy: { type: String, default: null },
@@ -53,6 +57,6 @@ const productSchema = new mongoose.Schema(
 
 // slug duy nhất trong số sản phẩm chưa xoá
 productSchema.index({ slug: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } });
-productSchema.index({ order: 1, createdAt: -1 });
+productSchema.index({ pinnedAt: -1, order: 1, createdAt: -1 });
 
 export const Product = mongoose.models.Product ?? mongoose.model("Product", productSchema);

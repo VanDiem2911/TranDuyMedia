@@ -384,13 +384,30 @@ describe("API v1", () => {
       assert.ok(f.includes("category") && f.includes("media"));
     });
 
-    it("tạo → tự sinh slug không dấu, trùng tên → slug -2", async () => {
+    it("tạo → tự sinh slug không dấu; trùng đường dẫn → 409 báo rõ, KHÔNG tự thêm hậu tố", async () => {
       const a = await admin.post("/api/v1/products").send(sample);
       assert.equal(a.status, 201);
       assert.equal(a.body.data.slug, "bo-anh-giang-sinh");
       pid = a.body.data.id;
       const b = await admin.post("/api/v1/products").send(sample);
-      assert.equal(b.body.data.slug, "bo-anh-giang-sinh-2");
+      assert.equal(b.status, 409);
+      assert.equal(b.body.error.code, "SLUG_TAKEN");
+      assert.equal(b.body.error.details[0].field, "slug");
+      assert.match(b.body.error.message, /Bộ ảnh Giáng sinh/);
+      const c = await admin.post("/api/v1/products").send({ ...sample, slug: "giang-sinh-2025" });
+      assert.equal(c.status, 201);
+      assert.equal(c.body.data.slug, "giang-sinh-2025");
+      // Sửa đường dẫn sang đường dẫn đã có → 409; kiểm tra trước khi lưu
+      const d = await admin
+        .patch(`/api/v1/products/${c.body.data.id}`)
+        .send({ slug: "bo-anh-giang-sinh" });
+      assert.equal(d.status, 409);
+      const chk = await admin.get("/api/v1/products/manage/slug-check?slug=bo-anh-giang-sinh");
+      assert.equal(chk.body.data.available, false);
+      const own = await admin.get(
+        `/api/v1/products/manage/slug-check?slug=bo-anh-giang-sinh&exceptId=${pid}`,
+      );
+      assert.equal(own.body.data.available, true);
     });
 
     it("công khai: danh sách & chi tiết theo slug; ẩn bản nháp", async () => {
@@ -424,6 +441,39 @@ describe("API v1", () => {
       assert.equal((await admin.get(`/api/v1/products/manage/${pid}`)).status, 200);
       assert.equal((await admin.post(`/api/v1/products/${pid}/restore`)).status, 404);
       assert.equal((await admin.delete(`/api/v1/products/${pid}`)).status, 204);
+    });
+
+    it("ghim nổi bật: tối đa 5, sản phẩm ghim đứng đầu, ghim thứ 6 → 409 thân thiện", async () => {
+      const ids = [];
+      for (let i = 1; i <= 6; i++) {
+        const r = await admin
+          .post("/api/v1/products")
+          .send({ ...sample, title: `Ghim ${i}`, slug: `ghim-${i}` });
+        assert.equal(r.status, 201);
+        ids.push(r.body.data.id);
+      }
+      for (const id of ids.slice(0, 5))
+        assert.equal(
+          (await admin.post(`/api/v1/products/${id}/pin`).send({ pinned: true })).status,
+          200,
+        );
+      const sixth = await admin.post(`/api/v1/products/${ids[5]}/pin`).send({ pinned: true });
+      assert.equal(sixth.status, 409);
+      assert.equal(sixth.body.error.code, "PIN_LIMIT");
+      assert.match(sixth.body.error.message, /tối đa 5/);
+      const list = (await request(app).get("/api/v1/products")).body.data;
+      assert.equal(list[0].slug, "ghim-5", "ghim sau cùng đứng đầu");
+      assert.ok(list.slice(0, 5).every((p) => p.pinnedAt));
+      // Bỏ ghim 1 cái → ghim được cái thứ 6
+      assert.equal(
+        (await admin.post(`/api/v1/products/${ids[0]}/pin`).send({ pinned: false })).status,
+        200,
+      );
+      assert.equal(
+        (await admin.post(`/api/v1/products/${ids[5]}/pin`).send({ pinned: true })).status,
+        200,
+      );
+      for (const id of ids) await admin.delete(`/api/v1/products/${id}`);
     });
 
     it("nhập link YouTube → dạng nhúng (không cần Cloudinary)", async () => {

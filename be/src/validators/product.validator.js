@@ -83,6 +83,16 @@ export const updateProductSchema = z
   .refine((v) => Object.keys(v).length > 0, "Không có thay đổi nào");
 
 export const productIdSchema = z.object({ id: objectId });
+export const pinProductSchema = z.object({ pinned: z.boolean({ error: "Thiếu trạng thái ghim" }) });
+export const slugCheckQuerySchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Đường dẫn chỉ gồm chữ thường không dấu, số và dấu -")
+    .max(120),
+  exceptId: objectId.optional(),
+});
 export const productSlugSchema = z.object({ slug: z.string().trim().toLowerCase().max(120) });
 export const listProductsQuerySchema = z.object({ q: z.string().trim().max(100).optional() });
 export const importMediaSchema = z.object({

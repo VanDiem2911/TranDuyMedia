@@ -222,7 +222,15 @@ export function describeError(err) {
     return err.details?.[0]?.message
       ? `Thông tin chưa hợp lệ: ${err.details[0].message}.`
       : "Thông tin chưa hợp lệ, vui lòng kiểm tra lại.";
-  if (["CLOUDINARY_FORBIDDEN", "IMPORT_FAILED", "STORAGE_NOT_CONFIGURED"].includes(err?.code))
+  if (
+    [
+      "CLOUDINARY_FORBIDDEN",
+      "IMPORT_FAILED",
+      "STORAGE_NOT_CONFIGURED",
+      "SLUG_TAKEN",
+      "PIN_LIMIT",
+    ].includes(err?.code)
+  )
     return err.message;
   // Lỗi Cloudinary khi tải thẳng (vd. vượt dung lượng gói Cloudinary, chữ ký hết hạn)
   if (err?.code === "CLOUDINARY_UPLOAD") {

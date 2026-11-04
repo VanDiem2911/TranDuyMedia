@@ -3,11 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
+import { api } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { CoverPicker } from "./CoverPicker";
 import { MediaManager } from "./MediaManager";
 import { newKey, slugify } from "./media-utils";
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Hỏi backend đường dẫn còn trống không (bỏ qua chính sản phẩm đang sửa) → { available, message? }. */
+const checkSlug = async (slug, exceptId) =>
+  (
+    await api(
+      `/products/manage/slug-check?slug=${encodeURIComponent(slug)}${exceptId ? `&exceptId=${exceptId}` : ""}`,
+    )
+  ).data;
 
 const EMPTY = {
   title: "",
@@ -53,6 +64,21 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
     () => Boolean(initial?.form?.slug) && initial.form.slug !== slugify(initial.form.title ?? ""),
   );
   const [errors, setErrors] = useState({});
+  // Kiểm tra trùng đường dẫn NGAY KHI GÕ (chờ 400ms sau lần gõ cuối) — kết quả lưu theo từng đường dẫn
+  const slug = form.slug || slugify(form.title);
+  const savedSlug = initial?.slug ?? null;
+  const [slugChecks, setSlugChecks] = useState({});
+  useEffect(() => {
+    if (!slug || !SLUG_RE.test(slug) || slug === savedSlug || slugChecks[slug]) return;
+    const t = setTimeout(() => {
+      checkSlug(slug, initial?.id)
+        .then((r) => setSlugChecks((m) => ({ ...m, [slug]: r })))
+        .catch(() => {}); // mất mạng → kiểm tra lại lúc bấm Lưu
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slug, savedSlug, slugChecks, initial?.id]);
+  const slugTaken = slug !== savedSlug && slugChecks[slug]?.available === false;
+  const slugError = errors.slug || (slugTaken ? slugChecks[slug].message : null);
   const [confirmClose, setConfirmClose] = useState(false);
   const dirty = useMemo(
     () =>
@@ -73,7 +99,10 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
       if (k === "title" && !slugTouched) next.slug = slugify(v);
       return next;
     });
-    if (errors[k]) setErrors((x) => ({ ...x, [k]: undefined }));
+    // Đường dẫn tự đổi theo tên → lỗi đường dẫn cũ không còn đúng nữa (kiểm tra lại với đường dẫn mới)
+    const stale = k === "title" && !slugTouched ? ["title", "slug"] : [k];
+    if (stale.some((x) => errors[x]))
+      setErrors((x) => ({ ...x, ...Object.fromEntries(stale.map((s) => [s, undefined])) }));
   };
 
   const requestClose = () => (dirty !== baseline ? setConfirmClose(true) : onClose());
@@ -89,16 +118,36 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
     };
   });
 
-  const submit = (e) => {
+  const [checking, setChecking] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     const errs = validate(form, media);
+    // Đường dẫn trùng → chặn ngay tại đây (không để lỗi hiện ra sau khi popup đã đóng và đang lưu nền)
+    if (!errs.slug && slug && slug !== savedSlug) {
+      let r = slugChecks[slug];
+      if (!r) {
+        setChecking(true);
+        r = await checkSlug(slug, initial?.id).catch(() => null);
+        setChecking(false);
+        if (r) setSlugChecks((m) => ({ ...m, [slug]: r }));
+      }
+      if (r && !r.available) errs.slug = r.message;
+    }
     setErrors(errs);
     if (Object.keys(errs).length) {
-      toast.warning("Vui lòng kiểm tra lại các mục được đánh dấu.", {
-        title: "Thông tin chưa đầy đủ",
-      });
+      toast.warning(
+        errs.slug && Object.keys(errs).length === 1
+          ? "Đường dẫn này đã có sản phẩm khác dùng. Hãy đổi tên sản phẩm hoặc nhập đường dẫn khác."
+          : "Vui lòng kiểm tra lại các mục được đánh dấu.",
+        {
+          title:
+            errs.slug && Object.keys(errs).length === 1
+              ? "Trùng đường dẫn"
+              : "Thông tin chưa đầy đủ",
+        },
+      );
       // Đưa ngay tới ô lỗi đầu tiên (popup dài, nhất là trên điện thoại) + đặt con trỏ vào đó
-      const formEl = e.currentTarget;
       requestAnimationFrame(() => {
         const bad = formEl.querySelector('[aria-invalid="true"], [data-invalid="true"]');
         bad?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -119,7 +168,7 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
         title: form.title.trim(),
         category: form.category.trim(),
         summary: form.summary.trim(),
-        slug: form.slug || slugify(form.title),
+        slug,
       },
       media,
       cover: picks.cover,
@@ -210,7 +259,7 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
               <div
                 className={cn(
                   "flex field items-center gap-1 py-0 pr-1.5",
-                  errors.slug && "border-red-300",
+                  slugError && "border-red-300",
                 )}
               >
                 <span className="shrink-0 text-ink-muted">/san-pham/</span>
@@ -223,14 +272,31 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
                     );
                   }}
                   maxLength={120}
+                  aria-invalid={!!slugError}
+                  aria-describedby="slug-note"
                   className="min-w-0 flex-1 bg-transparent py-3 outline-none"
                   placeholder="bo-anh-giang-sinh"
                 />
               </div>
-              {errors.slug && (
-                <span className="mt-1 block pl-1 text-left text-[12px] text-red-600">
-                  {errors.slug}
+              {slugError ? (
+                <span
+                  id="slug-note"
+                  role="alert"
+                  className="mt-1 block pl-1 text-left text-[12px] text-red-600"
+                >
+                  {slugError}
                 </span>
+              ) : (
+                slug !== savedSlug &&
+                slugChecks[slug]?.available && (
+                  <span
+                    id="slug-note"
+                    className="mt-1 flex items-center gap-1 pl-1 text-left text-[12px] text-emerald-700"
+                  >
+                    <Icon name="check" className="size-3.5" strokeWidth={2.5} />
+                    Đường dẫn dùng được
+                  </span>
+                )
               )}
             </label>
 
@@ -270,7 +336,7 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
               <span>
                 <span className="block text-sm font-semibold text-ink">Hiển thị trên website</span>
                 <span className="block text-left text-xs text-ink-muted">
-                  Tắt để lưu nháp, khách chưa nhìn thấy
+                  Tắt để ẩn khỏi website (khách chưa nhìn thấy)
                 </span>
               </span>
               <span className="relative inline-flex">
@@ -323,9 +389,10 @@ export function ProductEditor({ initial, onSubmit, onClose }) {
           </button>
           <button
             type="submit"
-            className="group relative inline-flex h-12 min-w-[220px] items-center justify-center rounded-full bg-navy-950 pr-[60px] pl-7 text-sm leading-none font-semibold text-white transition hover:bg-navy-800"
+            disabled={checking}
+            className="group relative inline-flex h-12 min-w-[220px] items-center justify-center rounded-full bg-navy-950 pr-[60px] pl-7 text-sm leading-none font-semibold text-white transition hover:bg-navy-800 disabled:opacity-60"
           >
-            {isEdit ? "Lưu thay đổi" : "Tạo sản phẩm"}
+            {checking ? "Đang kiểm tra…" : isEdit ? "Lưu thay đổi" : "Tạo sản phẩm"}
             <span className="absolute right-1.5 flex size-9 items-center justify-center rounded-full bg-orange-500">
               <Icon name="check" className="size-4" strokeWidth={2.5} />
             </span>
