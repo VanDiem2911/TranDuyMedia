@@ -17,6 +17,10 @@ const ALG = "HS256";
 
 export const ACCESS_TTL_MS = toMs(env.JWT_ACCESS_TTL);
 export const REFRESH_TTL_MS = toMs(env.JWT_REFRESH_TTL);
+/** Thời hạn phiên khi không chọn "Ghi nhớ đăng nhập" (không dài hơn phiên ghi nhớ). */
+export const SESSION_TTL_MS = Math.min(toMs(env.SESSION_TTL), REFRESH_TTL_MS);
+/** Thời hạn của một phiên theo lựa chọn "Ghi nhớ đăng nhập". */
+export const sessionTtl = (remember) => (remember ? REFRESH_TTL_MS : SESSION_TTL_MS);
 
 export const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -34,14 +38,14 @@ export function signAccessToken(user) {
   );
 }
 
-export function signRefreshToken(sessionId, userId) {
+export function signRefreshToken(sessionId, userId, ttlMs = REFRESH_TTL_MS) {
   return jwt.sign({ typ: "refresh", sid: sessionId }, env.JWT_REFRESH_SECRET, {
     algorithm: ALG,
     subject: userId,
     issuer: ISSUER,
     audience: AUDIENCE,
     jwtid: randomBytes(16).toString("hex"),
-    expiresIn: Math.floor(REFRESH_TTL_MS / 1000),
+    expiresIn: Math.floor(ttlMs / 1000),
   });
 }
 

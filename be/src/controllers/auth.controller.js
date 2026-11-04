@@ -7,21 +7,21 @@ const meta = (req) => ({ ip: req.ip, userAgent: req.get("user-agent") });
 /** TẦNG CONTROLLER — xác thực. Token chỉ nằm trong cookie HttpOnly, KHÔNG trả trong body. */
 export const authController = {
   async login(req, res) {
-    const { user, accessToken, refreshToken } = await authService.login(
+    const { user, accessToken, refreshToken, remember } = await authService.login(
       req.validated.body,
       meta(req),
     );
-    setAuthCookies(res, { accessToken, refreshToken });
+    setAuthCookies(res, { accessToken, refreshToken, remember });
     ok(res, { user });
   },
 
   async refresh(req, res) {
     try {
-      const { user, accessToken, refreshToken } = await authService.refresh(
+      const { user, accessToken, refreshToken, remember } = await authService.refresh(
         req.cookies?.[REFRESH_COOKIE],
         meta(req),
       );
-      setAuthCookies(res, { accessToken, refreshToken });
+      setAuthCookies(res, { accessToken, refreshToken, remember });
       ok(res, { user });
     } catch (err) {
       clearAuthCookies(res);

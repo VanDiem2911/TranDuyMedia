@@ -38,7 +38,8 @@ export function LoginForm() {
         title: "Phiên đăng nhập đã hết hạn",
       });
   }, [expired]);
-  const [form, setForm] = useState({ username: "", password: "" });
+  // Mặc định KHÔNG ghi nhớ (an toàn cho máy dùng chung): đóng trình duyệt là đăng xuất
+  const [form, setForm] = useState({ username: "", password: "", remember: false });
   const [show, setShow] = useState(false);
   const [pending, setPending] = useState(false);
   const set = (k) => (e) => setForm((v) => ({ ...v, [k]: e.target.value }));
@@ -103,6 +104,29 @@ export function LoginForm() {
         >
           <Icon name={show ? "eyeOff" : "eye"} className="size-[18px]" />
         </button>
+      </label>
+
+      {/*
+        Ghi nhớ đăng nhập (căn giữa, ngay trên nút): có → giữ đăng nhập 7 ngày trên thiết bị này;
+        không → đóng trình duyệt là đăng xuất. Ô vuông tự vẽ nhưng vẫn là checkbox thật (bàn phím, trình đọc màn hình).
+      */}
+      <label className="group mx-auto flex w-fit cursor-pointer items-center gap-2.5 pt-3 select-none">
+        <input
+          type="checkbox"
+          name="remember"
+          className="peer sr-only"
+          checked={form.remember}
+          onChange={(e) => setForm((v) => ({ ...v, remember: e.target.checked }))}
+        />
+        <span
+          aria-hidden
+          className="flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] border-ink/30 bg-white text-white transition group-hover:border-navy-950/60 peer-checked:border-navy-950 peer-checked:bg-navy-950 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-500 peer-focus-visible:ring-offset-2 [&>svg]:scale-50 [&>svg]:opacity-0 [&>svg]:transition peer-checked:[&>svg]:scale-100 peer-checked:[&>svg]:opacity-100"
+        >
+          <Icon name="check" className="size-3" strokeWidth={3} />
+        </span>
+        <span className="text-sm text-ink-soft transition group-hover:text-ink">
+          Ghi nhớ đăng nhập
+        </span>
       </label>
 
       <div className="flex justify-center pt-4">

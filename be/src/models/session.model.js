@@ -21,6 +21,9 @@ const sessionSchema = new mongoose.Schema(
     replacedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
     userAgent: { type: String, default: "", maxlength: 300 },
     ip: { type: String, default: "" },
+    // "Ghi nhớ đăng nhập": true → cookie lưu lại theo JWT_REFRESH_TTL; false → cookie phiên + SESSION_TTL.
+    // Phiên tạo trước khi có lựa chọn này coi như đã ghi nhớ (không bị đăng xuất bất ngờ khi nâng cấp).
+    remember: { type: Boolean, default: true },
   },
   { timestamps: true, versionKey: false },
 );

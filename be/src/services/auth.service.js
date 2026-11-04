@@ -9,7 +9,7 @@ import { env } from "#config/env.js";
 import { logger } from "#config/logger.js";
 import { sessionRepository } from "#repositories/session.repository.js";
 import {
-  REFRESH_TTL_MS,
+  sessionTtl,
   sha256,
   signAccessToken,
   signRefreshToken,
@@ -44,23 +44,25 @@ export class AuthService {
     this.sessions = sessions;
   }
 
-  /** Tạo phiên mới + cặp token. */
-  async #issue(user, meta) {
+  /** Tạo phiên mới + cặp token. remember: "Ghi nhớ đăng nhập" (quyết định thời hạn phiên + kiểu cookie). */
+  async #issue(user, meta, remember = true) {
     const sessionId = new mongoose.Types.ObjectId();
-    const refreshToken = signRefreshToken(String(sessionId), user.id);
+    const ttl = sessionTtl(remember);
+    const refreshToken = signRefreshToken(String(sessionId), user.id, ttl);
     await this.sessions.create({
       _id: sessionId,
       user: user.id,
       credential: credentialFingerprint(),
       tokenHash: sha256(refreshToken),
-      expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+      expiresAt: new Date(Date.now() + ttl),
+      remember,
       userAgent: (meta.userAgent ?? "").slice(0, 300),
       ip: meta.ip ?? "",
     });
-    return { accessToken: signAccessToken(user), refreshToken, sessionId };
+    return { accessToken: signAccessToken(user), refreshToken, sessionId, remember };
   }
 
-  async login({ username, password }, meta = {}) {
+  async login({ username, password, remember = false }, meta = {}) {
     if (!adminConfigured()) {
       logger.error("Chưa cấu hình ADMIN_ID / ADMIN_PASSWORD trong be/.env");
       throw ApiError.serviceUnavailable(
@@ -73,10 +75,10 @@ export class AuthService {
       throw INVALID();
     }
     const user = adminUser();
-    const tokens = await this.#issue(user, meta);
+    const tokens = await this.#issue(user, meta, remember);
     // Giới hạn số thiết bị đăng nhập cùng lúc
     const kicked = await this.sessions.revokeOldest(user.id, env.MAX_SESSIONS);
-    logger.info("Đăng nhập thành công", { username, ip: meta.ip, kicked });
+    logger.info("Đăng nhập thành công", { username, ip: meta.ip, remember, kicked });
     return { user, ...tokens };
   }
 
@@ -106,7 +108,7 @@ export class AuthService {
           ip: meta.ip,
           rotatedAgoMs,
         });
-        return { user, ...(await this.#issue(user, meta)) };
+        return { user, ...(await this.#issue(user, meta, session.remember ?? true)) };
       }
       // Ngoài cửa sổ ân hạn → có thể bị đánh cắp: huỷ mọi phiên của người dùng (mọi thiết bị)
       await this.sessions.revokeAllForUser(session.user);
@@ -119,7 +121,8 @@ export class AuthService {
       throw SESSION_EXPIRED();
     }
 
-    const next = await this.#issue(user, meta);
+    // Giữ nguyên lựa chọn "Ghi nhớ đăng nhập" của phiên khi xoay vòng token
+    const next = await this.#issue(user, meta, session.remember ?? true);
     // Nguyên tử: chỉ một request được xoay vòng token này.
     if (!(await this.sessions.revokeIfActive(session.id, next.sessionId))) {
       // Request khác vừa xoay vòng XONG trong lúc request này đang xử lý (race đồng thời thật,

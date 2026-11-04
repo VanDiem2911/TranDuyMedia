@@ -54,7 +54,11 @@ const schema = z
     JWT_ACCESS_SECRET: z.string().default(""),
     JWT_REFRESH_SECRET: z.string().default(""),
     JWT_ACCESS_TTL: z.string().default("15m"),
+    // Thời hạn phiên khi CÓ chọn "Ghi nhớ đăng nhập" (cookie lưu lại, đóng trình duyệt vẫn còn đăng nhập)
     JWT_REFRESH_TTL: z.string().default("7d"),
+    // Thời hạn phiên khi KHÔNG chọn "Ghi nhớ đăng nhập": cookie phiên (đóng trình duyệt là đăng xuất) và phía
+    // máy chủ phiên cũng chỉ sống tối đa chừng này kể từ lần dùng cuối (phòng trình duyệt khôi phục phiên cũ)
+    SESSION_TTL: z.string().default("12h"),
     // Số phiên đăng nhập đồng thời tối đa (thiết bị); vượt quá → phiên cũ nhất bị đăng xuất
     MAX_SESSIONS: z.coerce.number().int().min(1).default(5),
     // Cookie Secure: mặc định bật ở production (bắt buộc HTTPS)

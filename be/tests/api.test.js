@@ -68,7 +68,7 @@ describe("API v1", () => {
     });
 
     it("đăng nhập đúng → cookie HttpOnly + SameSite=Strict, không trả token trong body", async () => {
-      const res = await admin.post("/api/v1/auth/login").send(ADMIN);
+      const res = await admin.post("/api/v1/auth/login").send({ ...ADMIN, remember: true });
       assert.equal(res.status, 200);
       assert.equal(res.body.data.user.username, ADMIN.username);
       assert.equal(res.body.data.user.passwordHash, undefined);
@@ -85,6 +85,26 @@ describe("API v1", () => {
           res.headers["set-cookie"].find((c) => c.startsWith(`${name}=`)).match(/Max-Age=(\d+)/)[1],
         );
       assert.equal(maxAge("tdm_at"), maxAge("tdm_rt"));
+    });
+
+    it("không chọn “Ghi nhớ đăng nhập” → cookie phiên (đóng trình duyệt là đăng xuất), làm mới vẫn giữ lựa chọn", async () => {
+      const agent = withCsrf(request.agent(app));
+      const res = await agent.post("/api/v1/auth/login").send(ADMIN);
+      assert.equal(res.status, 200);
+      for (const c of res.headers["set-cookie"].filter((c) => !/Expires=Thu, 01 Jan 1970/.test(c)))
+        assert.doesNotMatch(c, /Max-Age|Expires/, c);
+      const again = await agent.post("/api/v1/auth/refresh").send({});
+      assert.equal(again.status, 200);
+      for (const c of again.headers["set-cookie"].filter(
+        (c) => !/Expires=Thu, 01 Jan 1970/.test(c),
+      ))
+        assert.doesNotMatch(c, /Max-Age|Expires/, c);
+      // Phía máy chủ phiên cũng ngắn (SESSION_TTL ≤ 12h), không 7 ngày
+      const { Session } = await import("#models/session.model.js");
+      const s = await Session.findOne({ revokedAt: null }).sort({ createdAt: -1 }).lean();
+      assert.equal(s.remember, false);
+      assert.ok(s.expiresAt - Date.now() <= 12 * 3600e3 + 5000);
+      await agent.post("/api/v1/auth/logout").send({});
     });
 
     it("access token hết hạn → 401 TOKEN_EXPIRED (frontend dựa vào mã này để tự làm mới phiên)", async () => {
