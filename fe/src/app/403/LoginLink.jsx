@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { safeNext } from "@/lib/safe-next";
 
@@ -22,7 +22,11 @@ function Inner({ next }) {
 }
 
 function WithNext() {
-  return <Inner next={safeNext(useSearchParams().get("from"))} />;
+  const from = useSearchParams().get("from");
+  const pathname = usePathname();
+  // Trang 403 do proxy trả giữ nguyên URL /admin/… trên thanh địa chỉ (không còn ?from=) → dùng chính đường dẫn đó,
+  // để link giống hệt bản server render và đăng nhập xong quay lại đúng trang đang định vào.
+  return <Inner next={safeNext(from ?? (pathname.startsWith("/admin") ? pathname : null))} />;
 }
 
 export function LoginLink({ withNext = false }) {

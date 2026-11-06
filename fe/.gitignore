@@ -46,3 +46,11 @@ next-env.d.ts
 
 # Ảnh gốc HD khách gửi (~160MB) — không commit; bản web WebP nằm ở public/images/about-hd
 /public/images/images_real/
+
+# cloudflare / opennext
+/.open-next/
+/.wrangler/
+.dev.vars
+
+# Bản sao lưu showreel gốc (không đưa lên Git / Cloudflare)
+/_backup/

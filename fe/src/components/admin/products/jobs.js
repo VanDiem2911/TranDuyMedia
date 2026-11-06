@@ -51,7 +51,7 @@ if (typeof window !== "undefined") {
  * trình duyệt → máy chủ → Cloudinary, và % tiến độ là thật tới khi Cloudinary nhận xong.
  * Mạng / trình duyệt chặn kết nối tới Cloudinary → tự chuyển sang tải qua máy chủ như trước.
  */
-async function uploadFile(file, folder, onProgress, ckpt) {
+export async function uploadFile(file, folder, onProgress, ckpt) {
   try {
     return await uploadDirect(file, folder, onProgress, ckpt);
   } catch (err) {
@@ -251,12 +251,12 @@ export function describeError(err) {
 }
 
 /** Báo website làm mới dữ liệu sản phẩm ngay (không phải chờ cache hết hạn). */
-export const revalidateSite = () =>
+export const revalidateSite = (tag = "products") =>
   fetch("/api/revalidate", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
-    body: JSON.stringify({ tag: "products" }),
+    body: JSON.stringify({ tag }),
   }).catch(() => {});
 
 /**

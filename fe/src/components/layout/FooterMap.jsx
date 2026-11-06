@@ -46,6 +46,8 @@ export function FooterMap() {
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
         allowFullScreen
+        // Extension trình duyệt (vd. Ruffle) tự gắn thuộc tính vào iframe trước khi React hydrate → bỏ qua cảnh báo lệch thuộc tính
+        suppressHydrationWarning
         className={cn("size-full", !active && "pointer-events-none")}
       />
       {!active && (

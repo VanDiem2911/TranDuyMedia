@@ -1,0 +1,41 @@
+{
+  // Website Trần Duy Media (Next.js) chạy trên Cloudflare Workers qua OpenNext.
+  // Backend (Express + MongoDB) KHÔNG nằm ở đây — chạy riêng trên Render, website gọi qua BACKEND_URL.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "tranduymedia-studio",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  // Tệp tĩnh (ảnh, video, JS, CSS) do Cloudflare phục vụ thẳng, không qua Worker
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Worker tự gọi chính nó (cần cho làm mới cache ở nền) — tên service phải trùng "name" ở trên
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "tranduymedia-studio" }],
+
+  // Kho lưu cache (R2). Tự tạo khi deploy nếu chưa có.
+  "r2_buckets": [
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "tranduymedia-studio-opennext-cache" }
+  ],
+
+  // Ghi nhớ thẻ vừa làm mới (D1) — dùng cho revalidateTag khi quản trị bấm Lưu.
+  // Không ghi database_id → wrangler tự tạo database khi deploy; bảng "revalidations" được tạo tự động.
+  "d1_databases": [
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "tranduymedia-studio-tag-cache" }
+  ],
+
+  // Hàng đợi làm mới cache (Durable Object, cần SQLite)
+  "durable_objects": {
+    "bindings": [{ "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+
+  // Tối ưu ảnh của next/image (ảnh trong /images…) chạy bằng Cloudflare Images
+  "images": { "binding": "IMAGES" },
+
+  // Giữ cấu hình đặt trong dashboard (BACKEND_URL…) khi deploy
+  "keep_vars": true
+}

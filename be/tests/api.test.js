@@ -569,4 +569,96 @@ describe("API v1", () => {
       assert.deepEqual(res.body.data, []);
     });
   });
+
+  describe("nội dung trang Về chúng tôi", () => {
+    const img = (src) => ({ src, pos: "50% 30%" });
+    const payload = () => ({
+      header: { eyebrow: "Hồ sơ", description: "Mô tả đầu trang" },
+      story: {
+        eyebrow: "Câu chuyện",
+        titleLead: "Đối tác gia công",
+        titleAccent: "toàn diện.",
+        taglines: ["Một", "Hai"],
+        paragraphs: ["Đoạn 1", "Đoạn 2"],
+        facts: Array.from({ length: 4 }, (_, i) => ({ label: `Mục ${i}`, value: `Giá trị ${i}` })),
+        image: { ...img("/images/a.webp"), alt: "Ảnh" },
+      },
+      core: {
+        eyebrow: "TDM",
+        title: "Giá trị",
+        vision: { text: "Tầm nhìn", image: img("/images/b.webp") },
+        mission: { text: "Sứ mệnh", image: img("https://res.cloudinary.com/x/image/upload/c.jpg") },
+      },
+      standards: {
+        eyebrow: "Chuẩn mực",
+        titleLead: "Cam kết",
+        titleAccent: "chuẩn mực.",
+        intro: "Giới thiệu",
+        items: Array.from({ length: 5 }, (_, i) => ({ title: `T${i}`, desc: `D${i}` })),
+      },
+      ecosystem: {
+        eyebrow: "Hệ sinh thái",
+        tagline: "6 dịch vụ",
+        items: Array.from({ length: 6 }, (_, i) => ({
+          name: `Dịch vụ ${i}`,
+          desc: `Mô tả ${i}`,
+          image: img(`/images/s${i}.webp`),
+        })),
+      },
+    });
+
+    before(async () => {
+      assert.equal((await admin.post("/api/v1/auth/login").send(ADMIN)).status, 200);
+    });
+
+    it("chưa chỉnh gì → công khai nhận null (website dùng nội dung mặc định)", async () => {
+      const res = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data, null);
+    });
+
+    it("lưu khi chưa đăng nhập → 401", async () => {
+      const res = await withCsrf(request(app)).patch("/api/v1/content/about").send(payload());
+      assert.equal(res.status, 401);
+    });
+
+    it("thiếu / sai dữ liệu → 400, báo đúng ô lỗi", async () => {
+      const bad = payload();
+      bad.story.paragraphs[1] = "   ";
+      bad.story.image.pos = "tuỳ ý";
+      bad.ecosystem.items.pop();
+      const res = await admin.patch("/api/v1/content/about").send(bad);
+      assert.equal(res.status, 400);
+      const fields = res.body.error.details.map((d) => d.field);
+      assert.ok(fields.includes("story.paragraphs.1"), fields.join());
+      assert.ok(fields.includes("story.image.pos"), fields.join());
+      assert.ok(fields.includes("ecosystem.items"), fields.join());
+    });
+
+    it("admin lưu → công khai đọc lại đúng nội dung, ảnh trong /images vẫn dùng được", async () => {
+      const res = await admin.patch("/api/v1/content/about").send(payload());
+      assert.equal(res.status, 200);
+      const pub = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(pub.body.data.data.story.titleLead, "Đối tác gia công");
+      assert.equal(pub.body.data.data.ecosystem.items.length, 6);
+      assert.ok(pub.body.data.updatedAt);
+      assert.equal(pub.headers["cache-control"], "no-store");
+    });
+
+    it("lưu lần nữa → ghi đè, vẫn chỉ 1 bản ghi", async () => {
+      const next = payload();
+      next.header.description = "Mô tả mới";
+      assert.equal((await admin.patch("/api/v1/content/about").send(next)).status, 200);
+      const { SiteContent } = await import("#models/site-content.model.js");
+      assert.equal(await SiteContent.countDocuments({ key: "about" }), 1);
+      const pub = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(pub.body.data.data.header.description, "Mô tả mới");
+    });
+
+    it("khôi phục mặc định → xoá bản đã chỉnh", async () => {
+      assert.equal((await admin.delete("/api/v1/content/about")).status, 204);
+      const pub = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(pub.body.data, null);
+    });
+  });
 });

@@ -3,15 +3,9 @@ import { SmartImage as Image } from "@/components/ui/SmartImage";
 import { LoopCarousel, ZoomGroup, ZoomImage } from "@/components/gallery";
 import { PageHeader, Partners, Showreel, Values } from "@/components/sections";
 import { Button, Container, SectionHeading } from "@/components/ui";
-import {
-  aboutHeaderColumns,
-  companyFacts,
-  ecosystem,
-  mission,
-  productionStandards,
-  profileImage,
-  vision,
-} from "@/data/about";
+import { aboutHeaderColumns } from "@/data/about";
+import { ecosystemHrefs } from "@/data/about-content";
+import { getAbout } from "@/lib/about";
 import { createMetadata } from "@/lib/metadata";
 import { cn, pad } from "@/lib/utils";
 
@@ -28,21 +22,21 @@ export const metadata = createMetadata({
  * câu chuyện → giá trị cốt lõi (tầm nhìn · sứ mệnh) → chuẩn mực sản xuất → hệ sinh thái dịch vụ (cuộn ngang)
  * → vì sao khách hàng chọn Trần Duy Media → showreel → đối tác (ngay trên "Bắt đầu dự án…" của chân trang).
  */
-export default function AboutPage() {
+export default async function AboutPage() {
+  // Nội dung chỉnh ở trang quản trị (DB) — cache theo thẻ, lưu xong là cập nhật ngay; lỗi → nội dung mặc định
+  const c = await getAbout();
   return (
     <>
       <PageHeader
         title="Về chúng tôi"
-        eyebrow="Hồ sơ doanh nghiệp"
-        description={
-          "Gia công video, hình ảnh thương mại quảng cáo tại TP.HCM — hơn 10 năm đồng hành cùng doanh nghiệp Việt."
-        }
+        eyebrow={c.header.eyebrow}
+        description={c.header.description}
         columns={aboutHeaderColumns}
       />
-      <Profile />
-      <CoreValues />
-      <Standards />
-      <Ecosystem />
+      <Profile story={c.story} />
+      <CoreValues core={c.core} />
+      <Standards standards={c.standards} />
+      <Ecosystem ecosystem={c.ecosystem} />
       {/* Ngay sau khối tối Hệ sinh thái → kẻ 1 đường mảnh ngăn cách 2 khối nền tối */}
       <Values
         className="border-t border-white/10"
@@ -55,19 +49,32 @@ export default function AboutPage() {
   );
 }
 
+/** Giữ 2 từ cuối của tiêu đề dính liền nhau (không để 1 từ lẻ rơi xuống dòng riêng) — như bản thiết kế gốc. */
+function NoOrphan({ text }) {
+  const words = text.trim().split(/\s+/);
+  if (words.length < 3) return <span className="whitespace-nowrap">{text}</span>;
+  return (
+    <>
+      {words.slice(0, -2).join(" ")}{" "}
+      <span className="whitespace-nowrap">{words.slice(-2).join(" ")}</span>
+    </>
+  );
+}
+
 /* ── Thông điệp & câu chuyện: giới thiệu + hồ sơ nhanh | 1 ảnh cao bằng cột chữ ── */
-function Profile() {
+function Profile({ story }) {
+  const profileImage = story.image;
   return (
     <section className="bg-paper section-y" data-nav-theme="light">
       <Container className="grid gap-12 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
         <div>
           <SectionHeading
-            eyebrow="Câu chuyện của chúng tôi"
+            eyebrow={story.eyebrow}
             title={
               <>
-                Đối tác gia công video, <span className="whitespace-nowrap">hình ảnh</span>{" "}
+                <NoOrphan text={story.titleLead} />{" "}
                 <span className="text-orange-500">
-                  toàn diện cho <span className="whitespace-nowrap">doanh nghiệp.</span>
+                  <NoOrphan text={story.titleAccent} />
                 </span>
               </>
             }
@@ -77,12 +84,9 @@ function Profile() {
             className="reveal mt-5 space-y-2 border-l-2 border-orange-500 pl-4 sm:pl-5"
             style={{ "--reveal-delay": "120ms" }}
           >
-            {[
-              "Đồng hành bền vững cùng doanh nghiệp",
-              "Đồng hành nâng tầm giá trị doanh nghiệp",
-            ].map((t) => (
+            {story.taglines.map((t, i) => (
               <li
-                key={t}
+                key={i}
                 className="text-lg leading-snug font-bold tracking-tight text-orange-500 sm:text-xl"
               >
                 {t}
@@ -93,22 +97,15 @@ function Profile() {
             className="reveal mt-6 space-y-4 text-base leading-relaxed text-ink-soft sm:text-lg"
             style={{ "--reveal-delay": "160ms" }}
           >
-            <p>
-              Trần Duy Media là đơn vị chuyên gia công nội dung truyền thông, thương mại quảng cáo.
-              Bắt đầu từ tinh thần yêu nghề, kinh nghiệm thực chiến với hơn 10 năm đồng hành chuyên
-              sâu, chúng tôi đã triển khai thành công nhiều dự án.
-            </p>
-            <p>
-              Chúng tôi luôn nỗ lực mỗi ngày — nơi sáng tạo, sự đổi mới không chỉ dừng ở việc phục
-              vụ mục tiêu kinh doanh của khách hàng, mà hơn hết là sự đồng hành cùng kiến tạo và
-              nâng tầm giá trị doanh nghiệp vững bền.
-            </p>
+            {story.paragraphs.map((t, i) => (
+              <p key={i}>{t}</p>
+            ))}
           </div>
 
           <dl className="mt-8 grid gap-x-10 border-t border-ink/10 sm:grid-cols-2">
-            {companyFacts.map((f, i) => (
+            {story.facts.map((f, i) => (
               <div
-                key={f.label}
+                key={i}
                 className="reveal border-b border-ink/10 py-3.5"
                 style={{ "--reveal-delay": `${(i % 2) * 80}ms` }}
               >
@@ -142,13 +139,17 @@ function Profile() {
 /* ── Giá trị cốt lõi: 2 thẻ khung hình điện ảnh (bản ban đầu) — Tầm nhìn (cam, trái) · Sứ mệnh (navy, phải).
    Ảnh nền phủ màu thương hiệu, 4 góc khung ngắm, câu tuyên bố lớn ở đáy.
    Rê chuột: ảnh phóng chậm, góc khung chuyển cam / trắng. ── */
-function CoreValues() {
+function CoreValues({ core }) {
+  const cards = [
+    { title: "Tầm nhìn", en: "Vision", orange: true, ...core.vision },
+    { title: "Sứ mệnh", en: "Mission", orange: false, ...core.mission },
+  ];
   return (
     <section className="bg-white section-y" data-nav-theme="light">
       <Container>
-        <SectionHeading align="center" eyebrow="Trần Duy Media" title="Những giá trị cốt lõi." />
+        <SectionHeading align="center" eyebrow={core.eyebrow} title={core.title} />
         <div className="mt-12 grid gap-5 sm:mt-14 md:grid-cols-2">
-          {[vision, mission].map((b, i) => (
+          {cards.map((b, i) => (
             <StatementCard key={b.title} item={b} index={i} />
           ))}
         </div>
@@ -165,7 +166,7 @@ const CORNERS = [
 ];
 
 function StatementCard({ item, index }) {
-  const orange = item === vision; // thẻ Tầm nhìn nền cam, Sứ mệnh nền navy
+  const orange = item.orange; // thẻ Tầm nhìn nền cam, Sứ mệnh nền navy
   return (
     <article
       className="group reveal relative isolate flex min-h-[400px] flex-col justify-between overflow-hidden rounded-3xl p-9 text-white sm:min-h-[460px] sm:p-12"
@@ -173,7 +174,7 @@ function StatementCard({ item, index }) {
       style={{ "--reveal-delay": `${index * 120}ms` }}
     >
       <Image
-        src={item.image}
+        src={item.image.src}
         alt=""
         fill
         sizes="(min-width: 768px) 50vw, 100vw"
@@ -181,7 +182,7 @@ function StatementCard({ item, index }) {
           "-z-20 object-cover transition-transform duration-[2000ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105",
           !orange && "grayscale",
         )}
-        style={{ objectPosition: item.imagePos }}
+        style={{ objectPosition: item.image.pos }}
       />
       <div
         aria-hidden="true"
@@ -227,23 +228,21 @@ function StatementCard({ item, index }) {
 
 /* ── Chuẩn mực sản xuất — cùng style khối "Quy trình sản xuất" ở trang chủ:
    cột trái ghim (sticky) khi cuộn, cột phải là danh sách có số lớn mờ (rê chuột → số chuyển cam). ── */
-function Standards() {
+function Standards({ standards }) {
   return (
     <section className="bg-paper section-y" data-nav-theme="light">
       <Container>
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           <div className="lg:sticky lg:top-32 lg:self-start">
-            <p className="reveal mb-4 eyebrow">Chuẩn mực sản xuất</p>
+            <p className="reveal mb-4 eyebrow">{standards.eyebrow}</p>
             <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-              Trần Duy Media cam kết <span className="text-orange-500">chuẩn mực sản xuất.</span>
+              {standards.titleLead} <span className="text-orange-500">{standards.titleAccent}</span>
             </h2>
             <p
               className="reveal mt-5 max-w-md text-base leading-relaxed text-ink-soft sm:text-lg"
               style={{ "--reveal-delay": "160ms" }}
             >
-              Năm nguyên tắc chúng tôi giữ vững trong từng{" "}
-              <span className="whitespace-nowrap">dự án,</span> với từng{" "}
-              <span className="whitespace-nowrap">khách hàng.</span>
+              <NoOrphan text={standards.intro} />
             </p>
             <div className="reveal mt-8" style={{ "--reveal-delay": "240ms" }}>
               <Button pill data-booking>
@@ -253,9 +252,9 @@ function Standards() {
           </div>
 
           <ol className="divide-y divide-ink/10 border-y border-ink/10">
-            {productionStandards.map((v, i) => (
+            {standards.items.map((v, i) => (
               <li
-                key={v.title}
+                key={i}
                 className="reveal group grid grid-cols-[3.5rem_1fr] gap-4 py-5 sm:grid-cols-[5rem_1fr] sm:gap-8 sm:py-6"
                 style={{ "--reveal-delay": `${(i % 2) * 80}ms` }}
               >
@@ -277,7 +276,7 @@ function Standards() {
 
 /* ── Hệ sinh thái dịch vụ cốt lõi — nền tối như bản gốc; tiêu đề + danh sách 6 mảng,
    ảnh từng mảng LƯỚT NGANG VÔ HẠN (cùng kiểu khối Hậu trường): desktop vừa 3 thẻ, tablet 2, điện thoại 1 + hé thẻ sau. ── */
-function Ecosystem() {
+function Ecosystem({ ecosystem }) {
   return (
     <section
       className="grain relative overflow-hidden bg-navy-950 section-y text-white"
@@ -289,7 +288,7 @@ function Ecosystem() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
           <SectionHeading
             light
-            eyebrow="Hệ sinh thái dịch vụ cốt lõi"
+            eyebrow={ecosystem.eyebrow}
             title={
               <>
                 <span className="whitespace-nowrap">Gia công</span>{" "}
@@ -306,7 +305,8 @@ function Ecosystem() {
             style={{ "--reveal-delay": "160ms" }}
           >
             <p className="flex items-center gap-3 text-base font-bold tracking-[0.16em] whitespace-nowrap text-white uppercase sm:text-xl sm:tracking-[0.22em]">
-              <span className="h-0.5 w-8 bg-orange-500" aria-hidden="true" />6 dịch vụ - 1 ekip
+              <span className="h-0.5 w-8 bg-orange-500" aria-hidden="true" />
+              {ecosystem.tagline}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button pill variant="white" data-booking>
@@ -325,17 +325,17 @@ function Ecosystem() {
             // Điện thoại: 1 thẻ vừa khít khung (luôn nằm giữa); tablet 2 thẻ; máy tính 3 thẻ
             itemClassName="w-[100cqw] sm:w-[calc((100cqw-1rem)/2)] lg:w-[calc((100cqw-2.5rem)/3)]"
           >
-            {ecosystem.map((e, i) => (
-              <Link key={e.name} href={e.href} draggable={false} className="group block">
+            {ecosystem.items.map((e, i) => (
+              <Link key={i} href={ecosystemHrefs[i]} draggable={false} className="group block">
                 <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-navy-900 ring-1 ring-white/10">
                   <Image
-                    src={e.src}
+                    src={e.image.src}
                     alt={e.name}
                     fill
                     sizes="(min-width: 1024px) 30vw, (min-width: 640px) 46vw, 82vw"
                     draggable={false}
                     className="pointer-events-none object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105"
-                    style={{ objectPosition: e.pos }}
+                    style={{ objectPosition: e.image.pos }}
                   />
                   {/* Phủ tối đậm ở nửa dưới → tên dịch vụ luôn nổi rõ trên mọi ảnh */}
                   <div className="absolute inset-0 bg-linear-to-t from-navy-950 via-navy-950/70 via-35% to-transparent to-65%" />
