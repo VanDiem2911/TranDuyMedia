@@ -30,3 +30,24 @@ Mỗi app có `.env.example` riêng: copy thành `fe/.env.local` và `be/.env`.
 
 Frontend gọi API qua `/api/v1/*` cùng tên miền, Next.js chuyển tiếp sang `BACKEND_URL`
 (địa chỉ này được chốt lúc build — đặt `BACKEND_URL` trước `npm run build` khi deploy).
+
+## Deploy: frontend lên Cloudflare, backend lên Render
+
+Cloudflare chỉ chạy **frontend** (`fe/`) bằng Workers + OpenNext (Pages không còn được khuyến nghị cho Next.js). Backend (`be/`) chạy riêng trên Render.
+
+**1. Backend (Render):** đặt `CORS_ORIGINS` = địa chỉ website Cloudflare, cùng các biến trong `be/.env.example`.
+
+**2. Frontend (Cloudflare → Workers & Pages → Create → Import a repository):**
+
+- Root directory: `fe`
+- Build command: `npm run build:cf` · Deploy command: `npm run deploy:cf`
+- Biến môi trường (đặt ở **cả** Build variables và Variables/Secrets của Worker):
+  `BACKEND_URL` = địa chỉ backend Render (vd. `https://xxx.onrender.com`), `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`.
+  `BACKEND_URL` được chốt lúc build, nên đổi thì phải build lại.
+- R2 bucket, D1 database và Durable Object (cache để lưu xong là website đổi ngay) được tạo tự động khi deploy lần đầu, khai báo trong `fe/wrangler.jsonc`.
+
+**3. Sau lần deploy đầu:** vào `/admin/about`, sửa một chữ, Lưu, rồi mở `/gioi-thieu` để kiểm tra website đổi ngay.
+
+Chạy thử cục bộ: `npm run preview --prefix fe` (cần `fe/.dev.vars` có `NEXTJS_ENV=development` và `BACKEND_URL`).
+
+Lưu ý: tệp tĩnh tối đa 25 MiB (video showreel 1080p đã nén để vừa giới hạn này).

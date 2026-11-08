@@ -596,6 +596,17 @@ describe("API v1", () => {
         intro: "Giới thiệu",
         items: Array.from({ length: 5 }, (_, i) => ({ title: `T${i}`, desc: `D${i}` })),
       },
+      values: {
+        eyebrow: "Khách hàng",
+        titleLead: "Uy tín.",
+        titleAccent: "Tận tâm.",
+        description: "Ba giá trị",
+        items: Array.from({ length: 3 }, (_, i) => ({
+          title: `Giá trị ${i}`,
+          desc: `Mô tả ${i}`,
+          image: img(`/images/v${i}.webp`),
+        })),
+      },
       ecosystem: {
         eyebrow: "Hệ sinh thái",
         tagline: "6 dịch vụ",

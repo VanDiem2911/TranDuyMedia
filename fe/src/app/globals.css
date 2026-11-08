@@ -218,6 +218,11 @@ html.lenis body {
   opacity: 0;
   transform: translateY(26px);
 }
+/* Trang quản trị (khung sửa trực tiếp) không chạy hiệu ứng cuộn → luôn hiện sẵn */
+.edit-canvas .reveal {
+  opacity: 1 !important;
+  transform: none !important;
+}
 .reveal[data-reveal="left"] {
   transform: translateX(-32px);
 }

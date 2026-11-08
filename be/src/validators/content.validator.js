@@ -62,6 +62,17 @@ export const aboutSchema = z.object({
       "Chuẩn mực sản xuất",
     ),
   }),
+  values: z.object({
+    eyebrow: text("dòng nhỏ khối khách hàng tin tưởng", 60),
+    titleLead: text("tiêu đề khối khách hàng tin tưởng", 80),
+    titleAccent: text("phần tiêu đề màu cam", 60),
+    description: text("mô tả khối khách hàng tin tưởng", 300),
+    items: list(
+      z.object({ title: text("tên giá trị", 40), desc: text("mô tả giá trị", 200), image }),
+      3,
+      "Ba giá trị",
+    ),
+  }),
   ecosystem: z.object({
     eyebrow: text("dòng nhỏ hệ sinh thái", 60),
     tagline: text("khẩu hiệu hệ sinh thái", 60),

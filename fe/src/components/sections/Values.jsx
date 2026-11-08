@@ -1,4 +1,5 @@
-import { SmartImage as Image } from "@/components/ui/SmartImage";
+import { ImageTools } from "@/components/admin/about/inline-edit";
+import { Pic, T } from "@/components/about/edit-kit";
 import { Container } from "@/components/ui";
 import { values } from "@/data/services";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,11 @@ const CORNERS = [
 export function Values({
   eyebrow = "Vì sao chọn chúng tôi",
   description = "Ba giá trị chúng tôi giữ trong mọi khung hình — từ buổi trao đổi đầu tiên đến file bàn giao cuối cùng.",
+  titleLead = "Uy tín. Tối ưu chi phí.",
+  titleAccent = "Tận tâm.",
+  items = values,
   className,
+  edit, // chỉ trang quản trị truyền vào: chữ + ảnh sửa trực tiếp (xem components/admin/about)
 }) {
   return (
     <section
@@ -27,17 +32,22 @@ export function Values({
       data-nav-theme="dark"
     >
       <Container className="relative py-16 sm:py-20">
-        <p className="reveal mb-4 eyebrow">{eyebrow}</p>
+        <p className="reveal mb-4 eyebrow">
+          <T edit={edit} path="values.eyebrow" value={eyebrow} />
+        </p>
         {/* Mô tả canh giữa theo chiều cao tiêu đề */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-            Uy tín. Tối ưu chi phí. <span className="text-orange-500">Tận tâm.</span>
+            <T edit={edit} path="values.titleLead" value={titleLead} />{" "}
+            <span className="text-orange-500">
+              <T edit={edit} path="values.titleAccent" value={titleAccent} />
+            </span>
           </h2>
           <p
             className="reveal max-w-sm text-base leading-relaxed text-white/65"
             style={{ "--reveal-delay": "160ms" }}
           >
-            {description}
+            <T edit={edit} path="values.description" value={description} />
           </p>
         </div>
 
@@ -48,18 +58,18 @@ export function Values({
         >
           <div aria-hidden="true" className="h-6 sprockets" />
           <ul className="grid gap-3 sm:gap-4 md:grid-cols-3">
-            {values.map((v, i) => (
+            {items.map((v, i) => (
               <li
                 key={v.title}
                 className="group relative aspect-4/3 overflow-hidden rounded-md bg-navy-900 md:aspect-16/10"
               >
-                <Image
+                <Pic
+                  edit={edit}
                   src={v.image}
                   alt=""
-                  fill
                   sizes="(min-width: 768px) 33vw, 100vw"
+                  pos={v.imagePos}
                   className="object-cover grayscale transition-[transform,filter] duration-[1200ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105 group-hover:grayscale-0"
-                  style={{ objectPosition: v.imagePos }}
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-navy-950 via-navy-950/60 to-navy-950/20" />
 
@@ -86,10 +96,13 @@ export function Values({
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
                   <h3 className="flex items-center gap-3 text-2xl font-bold tracking-tight sm:text-[1.7rem]">
                     <span className="h-0.5 w-6 bg-orange-500 transition-all duration-500 group-hover:w-10" />
-                    {v.title}
+                    <T edit={edit} path={`values.items.${i}.title`} value={v.title} />
                   </h3>
-                  <p className="mt-2 text-left text-sm leading-relaxed text-white/75">{v.desc}</p>
+                  <p className="mt-2 text-left text-sm leading-relaxed text-white/75">
+                    <T edit={edit} path={`values.items.${i}.desc`} value={v.desc} />
+                  </p>
                 </div>
+                {edit && <ImageTools edit={edit} path={`values.items.${i}.image`} />}
               </li>
             ))}
           </ul>

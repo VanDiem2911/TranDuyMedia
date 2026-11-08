@@ -4,6 +4,7 @@
 // Dùng được cả ở server (lib/about.js) lẫn trình duyệt (trang quản trị) — KHÔNG import gì phụ thuộc server.
 
 import { ecosystem, mission, productionStandards, profileImage, vision } from "@/data/about";
+import { values } from "@/data/services";
 
 export const ABOUT_TAG = "about";
 
@@ -42,6 +43,18 @@ export const aboutDefaults = {
     titleAccent: "chuẩn mực sản xuất.",
     intro: "Năm nguyên tắc chúng tôi giữ vững trong từng dự án, với từng khách hàng.",
     items: productionStandards.map(({ title, desc }) => ({ title, desc })),
+  },
+  values: {
+    eyebrow: "Khách hàng tin tưởng chọn Tran Duy Media",
+    titleLead: "Uy tín. Tối ưu chi phí.",
+    titleAccent: "Tận tâm.",
+    description:
+      "Ba giá trị chúng tôi giữ trong mọi khung hình — từ buổi trao đổi đầu tiên đến file bàn giao cuối cùng.",
+    items: values.map((v) => ({
+      title: v.title,
+      desc: v.desc,
+      image: { src: v.image, pos: v.imagePos },
+    })),
   },
   ecosystem: {
     eyebrow: "Hệ sinh thái dịch vụ cốt lõi",

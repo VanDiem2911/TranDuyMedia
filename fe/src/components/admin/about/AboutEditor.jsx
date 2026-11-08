@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  AboutHeader,
+  AboutValues,
+  CoreValues,
+  Ecosystem,
+  Profile,
+  Standards,
+} from "@/components/about/AboutSections";
 import { Icon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ABOUT_TAG, aboutDefaults, mergeAbout } from "@/data/about-content";
 import { api } from "@/lib/api";
-import { cdn } from "@/lib/cdn";
 import { formatPos, parsePos } from "@/lib/crop";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -16,6 +23,7 @@ import { MAX_IMAGE_MB } from "../products/media-utils";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const UPLOAD_FOLDER = "about"; // thư mục Cloudinary — backend chỉ tự dọn ảnh cũ trong thư mục này
+const HISTORY_MAX = 100;
 
 /* ── Tiện ích đọc / ghi theo đường dẫn "story.paragraphs.0" (bất biến) ── */
 const getIn = (o, path) => path.split(".").reduce((x, k) => x?.[k], o);
@@ -39,44 +47,65 @@ function normalize(node) {
   return node;
 }
 
-/** Mọi ô chữ / đường dẫn ảnh đều bắt buộc có nội dung (khớp backend) → { "story.titleLead": "…" } */
-function validate(node, path = "", out = {}) {
-  if (Array.isArray(node)) node.forEach((v, i) => validate(v, path ? `${path}.${i}` : `${i}`, out));
+/** Cây nội dung → { "story.titleLead": "…", … } (mỗi lá một dòng) */
+function flatten(node, path = "", out = {}) {
+  if (Array.isArray(node)) node.forEach((v, i) => flatten(v, path ? `${path}.${i}` : `${i}`, out));
   else if (node && typeof node === "object")
-    Object.entries(node).forEach(([k, v]) => validate(v, path ? `${path}.${k}` : k, out));
-  else if (typeof node === "string" && !node.trim()) out[path] = "Vui lòng không để trống mục này";
+    Object.entries(node).forEach(([k, v]) => flatten(v, path ? `${path}.${k}` : k, out));
+  else out[path] = node;
   return out;
 }
 
+/** Số "chỗ đã sửa": mỗi ô chữ = 1; mỗi ảnh = 1 (đổi ảnh hay cắt ảnh đều tính chung một chỗ). */
+function countChanges(now, saved) {
+  const a = flatten(now);
+  const b = flatten(saved);
+  const sites = new Set();
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)]))
+    if (a[k] !== b[k]) sites.add(k.replace(/\.(src|pos)$/, ""));
+  return sites.size;
+}
+
 const formatTime = (iso) =>
-  iso
-    ? new Date(iso).toLocaleString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-    : null;
+  iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : null;
 
 /**
- * Chỉnh nội dung + hình ảnh trang "Về chúng tôi". Bố cục trang giữ nguyên — chỉ đổi chữ và ảnh.
+ * Sửa TRỰC TIẾP trên giao diện trang "Về chúng tôi": khung bên dưới là chính các khối của trang thật
+ * (cùng component với website) — rê chuột → bấm chữ để gõ, bấm ảnh để đổi / cắt. Bố cục, font, cỡ chữ, màu giữ nguyên.
  * Bấm "Lưu" → tải ảnh mới lên Cloudinary (nếu có) → ghi vào DB → báo website làm mới ngay (revalidate theo thẻ).
  */
 export function AboutEditor() {
   const router = useRouter();
   const [content, setContent] = useState(null);
   const [baseline, setBaseline] = useState("");
+  const [history, setHistory] = useState([]); // các bản trước đó, để Hoàn tác
   const [savedAt, setSavedAt] = useState(null);
   const [hasCustom, setHasCustom] = useState(false);
-  const [files, setFiles] = useState({}); // đường dẫn ô ảnh → tệp mới chọn, chưa tải lên
-  const [errors, setErrors] = useState({});
   const [loadError, setLoadError] = useState("");
   const [tick, setTick] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [resetting, setResetting] = useState(false);
+  const [confirm, setConfirm] = useState(null); // null | "reset" | "discard"
+  const [busy, setBusy] = useState(false);
+  const contentRef = useRef(null);
+  const files = useRef({}); // địa chỉ blob: của ảnh vừa chọn → tệp chưa tải lên
   const blobs = useRef([]);
+  const fileInput = useRef(null);
+  const pickTarget = useRef(null);
+
+  /** Đặt nội dung mới (state + ref cùng lúc để các thao tác liên tiếp luôn thấy bản mới nhất). */
+  const put = useCallback((next) => {
+    contentRef.current = next;
+    setContent(next);
+  }, []);
+  /** Thay đổi có ghi nhận để Hoàn tác */
+  const commit = useCallback(
+    (fn) => {
+      const prev = contentRef.current;
+      setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), prev]);
+      put(fn(prev));
+    },
+    [put],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -84,8 +113,9 @@ export function AboutEditor() {
       .then((res) => {
         if (!alive) return;
         const merged = normalize(mergeAbout(aboutDefaults, res.data?.data));
-        setContent(merged);
+        put(merged);
         setBaseline(JSON.stringify(merged));
+        setHistory([]);
         setHasCustom(Boolean(res.data));
         setSavedAt(res.data?.updatedAt ?? null);
         setLoadError("");
@@ -97,7 +127,7 @@ export function AboutEditor() {
     return () => {
       alive = false;
     };
-  }, [tick, router]);
+  }, [tick, router, put]);
 
   // Giải phóng ảnh xem trước tạm khi rời trang
   useEffect(() => {
@@ -105,7 +135,9 @@ export function AboutEditor() {
     return () => list.forEach((u) => URL.revokeObjectURL(u));
   }, []);
 
-  const dirty = content !== null && JSON.stringify(content) !== baseline;
+  const savedObj = useMemo(() => (baseline ? JSON.parse(baseline) : null), [baseline]);
+  const changes = content && savedObj ? countChanges(content, savedObj) : 0;
+  const dirty = changes > 0;
 
   // Cảnh báo khi đóng tab / tải lại lúc còn thay đổi chưa lưu
   useEffect(() => {
@@ -115,64 +147,77 @@ export function AboutEditor() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const savedSrc = useMemo(() => (baseline ? JSON.parse(baseline) : null), [baseline]);
-
-  const edit = useCallback((path, value) => {
-    setContent((c) => setIn(c, path, value));
-    setErrors((e) => (e[path] ? { ...e, [path]: undefined } : e));
-  }, []);
-
-  const pickImage = useCallback((path, file) => {
-    if (!file) return;
-    if (!IMAGE_TYPES.includes(file.type)) {
-      toast.warning(`“${file.name}” không phải ảnh được hỗ trợ (JPG, PNG, WebP hoặc AVIF).`, {
-        title: "Chưa chọn được ảnh",
-      });
-      return;
-    }
-    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-      toast.warning(
-        `“${file.name}” nặng ${(file.size / 1024 / 1024).toFixed(1)}MB (ảnh tối đa ${MAX_IMAGE_MB}MB).`,
-        { title: "Ảnh quá nặng" },
-      );
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    blobs.current.push(url);
-    setFiles((f) => ({ ...f, [path]: file }));
-    setContent((c) => setIn(c, `${path}.src`, url));
-  }, []);
-
-  /** Bỏ ảnh vừa chọn → quay lại ảnh đang hiển thị trên website. */
-  const undoImage = useCallback(
-    (path) => {
-      setFiles((f) => {
-        const { [path]: _gone, ...rest } = f;
-        return rest;
-      });
-      setContent((c) => setIn(c, `${path}.src`, getIn(savedSrc, `${path}.src`)));
+  const pickImage = useCallback(
+    (file) => {
+      const path = pickTarget.current;
+      if (!file || !path) return;
+      if (!IMAGE_TYPES.includes(file.type)) {
+        toast.warning(`“${file.name}” không phải ảnh được hỗ trợ (JPG, PNG, WebP hoặc AVIF).`, {
+          title: "Chưa chọn được ảnh",
+        });
+        return;
+      }
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        toast.warning(
+          `“${file.name}” nặng ${(file.size / 1024 / 1024).toFixed(1)}MB (ảnh tối đa ${MAX_IMAGE_MB}MB).`,
+          { title: "Ảnh quá nặng" },
+        );
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      blobs.current.push(url);
+      files.current[url] = file;
+      commit((c) => setIn(c, `${path}.src`, url));
     },
-    [savedSrc],
+    [commit],
   );
 
-  const save = async () => {
-    if (saving || !content) return;
-    const errs = validate(content);
-    setErrors(errs);
-    if (Object.keys(errs).length) {
-      toast.warning("Có mục đang để trống — vui lòng điền đủ các mục được đánh dấu.", {
-        title: "Nội dung chưa đầy đủ",
-      });
-      requestAnimationFrame(() => {
-        const bad = document.querySelector('[aria-invalid="true"], [data-invalid="true"]');
-        bad?.scrollIntoView({ behavior: "smooth", block: "center" });
-        bad?.focus?.({ preventScroll: true });
-      });
-      return;
-    }
+  const savedRef = useRef(null);
+  useEffect(() => {
+    savedRef.current = savedObj;
+  }, [savedObj]);
 
+  /** Bộ công cụ đưa cho các khối trên trang (xem components/admin/about/inline-edit.jsx) */
+  const edit = useMemo(
+    () => ({
+      get: (path) => getIn(contentRef.current, path),
+      isChanged: (path) => {
+        const base = getIn(savedRef.current, path);
+        return base !== undefined && base !== getIn(contentRef.current, path);
+      },
+      setText: (path, value) => commit((c) => setIn(c, path, value)),
+      pickImage: (path) => {
+        pickTarget.current = path;
+        fileInput.current?.click();
+      },
+      setPosLive: (path, pos) => put(setIn(contentRef.current, `${path}.pos`, pos)),
+      snapshot: () => contentRef.current,
+      record: (prev) => {
+        if (prev && JSON.stringify(prev) !== JSON.stringify(contentRef.current))
+          setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), prev]);
+      },
+    }),
+    [commit, put],
+  );
+  const undo = () => {
+    if (!history.length) return;
+    put(history[history.length - 1]);
+    setHistory(history.slice(0, -1));
+  };
+
+  const discard = () => {
+    put(JSON.parse(baseline));
+    setHistory([]);
+    setConfirm(null);
+  };
+
+  const save = async () => {
+    if (saving || !content || !dirty) return;
     setSaving(true);
-    const pending = Object.entries(files);
+    // Ảnh mới chọn = những ô ảnh đang trỏ tới địa chỉ blob:
+    const pending = Object.entries(flatten(content)).filter(
+      ([k, v]) => k.endsWith(".src") && typeof v === "string" && v.startsWith("blob:"),
+    );
     const toastId = toast.loading(
       pending.length ? `Đang tải ${pending.length} ảnh lên…` : "Đang lưu nội dung…",
       { title: "Trang Về chúng tôi", progress: pending.length ? 0 : undefined },
@@ -189,23 +234,17 @@ export function AboutEditor() {
           });
         };
         const uploaded = await Promise.all(
-          pending.map(async ([path, file], i) => {
-            const res = await uploadFile(
-              file,
-              UPLOAD_FOLDER,
-              (p) => {
-                prog[i] = p;
-                report();
-              },
-              undefined,
-            );
+          pending.map(async ([path, blobUrl], i) => {
+            const res = await uploadFile(files.current[blobUrl], UPLOAD_FOLDER, (p) => {
+              prog[i] = p;
+              report();
+            });
             return [path, res.url];
           }),
         );
-        for (const [path, url] of uploaded) next = setIn(next, `${path}.src`, url);
+        for (const [path, url] of uploaded) next = setIn(next, path, url);
         // Ảnh đã lên Cloudinary → nhớ lại, lỡ bước lưu lỗi thì thử lại không tải ảnh lần nữa
-        setContent(next);
-        setFiles({});
+        put(next);
       }
 
       toast.update(toastId, { progress: 0.95, message: "Đang lưu nội dung…" });
@@ -213,25 +252,25 @@ export function AboutEditor() {
       await revalidateSite(ABOUT_TAG); // website cập nhật ngay, không phải chờ cache hết hạn
 
       const saved = normalize(mergeAbout(aboutDefaults, res.data.data));
-      setContent(saved);
+      put(saved);
       setBaseline(JSON.stringify(saved));
+      setHistory([]);
+      files.current = {};
       setSavedAt(res.data.updatedAt);
       setHasCustom(true);
-      setErrors({});
       toast.update(toastId, {
         type: "success",
-        title: "Đã lưu trang Về chúng tôi",
-        message: "Nội dung mới đã hiển thị trên website.",
+        title: `Đã lưu ${changes} thay đổi lúc ${formatTime(res.data.updatedAt)}`,
+        message: "Website đã cập nhật.",
         progress: undefined,
         action: { label: "Xem trang", onClick: () => window.open("/gioi-thieu", "_blank") },
       });
     } catch (err) {
-      if (err?.code === "VALIDATION_ERROR" && err.details?.length)
-        setErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
+      const detail = err?.code === "VALIDATION_ERROR" && err.details?.[0];
       toast.update(toastId, {
         type: "error",
         title: "Chưa lưu được nội dung",
-        message: `${describeError(err)} Những thay đổi của bạn vẫn còn trên màn hình.`,
+        message: `${detail ? `${detail.message}. ` : describeError(err)} Những thay đổi của bạn vẫn còn trên màn hình.`,
         progress: undefined,
       });
     } finally {
@@ -239,16 +278,21 @@ export function AboutEditor() {
     }
   };
 
-  // Ctrl/Cmd + S = Lưu
-  const saveRef = useRef(save);
+  // Phím tắt: Ctrl/Cmd + S = Lưu · Ctrl/Cmd + Z = Hoàn tác (khi không đang gõ chữ)
+  const keys = useRef({});
   useEffect(() => {
-    saveRef.current = save;
+    keys.current = { save, undo };
   });
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === "s") {
         e.preventDefault();
-        saveRef.current();
+        keys.current.save();
+      } else if (k === "z" && !e.target.closest?.('[contenteditable="true"], input, textarea')) {
+        e.preventDefault();
+        keys.current.undo();
       }
     };
     document.addEventListener("keydown", onKey);
@@ -256,15 +300,15 @@ export function AboutEditor() {
   }, []);
 
   const reset = async () => {
-    setResetting(true);
+    setBusy(true);
     try {
       await api("/content/about", { method: "DELETE" });
       await revalidateSite(ABOUT_TAG);
       const def = normalize(aboutDefaults);
-      setContent(def);
+      put(def);
       setBaseline(JSON.stringify(def));
-      setFiles({});
-      setErrors({});
+      setHistory([]);
+      files.current = {};
       setHasCustom(false);
       setSavedAt(null);
       toast.success("Trang Về chúng tôi đã quay về nội dung và hình ảnh ban đầu.", {
@@ -273,8 +317,8 @@ export function AboutEditor() {
     } catch (err) {
       toast.error(describeError(err), { title: "Chưa khôi phục được" });
     } finally {
-      setResetting(false);
-      setConfirmReset(false);
+      setBusy(false);
+      setConfirm(null);
     }
   };
 
@@ -295,442 +339,157 @@ export function AboutEditor() {
 
   if (!content)
     return (
-      <div className="mx-auto max-w-6xl space-y-5" aria-busy="true" aria-live="polite">
+      <div className="mx-auto max-w-7xl space-y-4" aria-busy="true" aria-live="polite">
         <span className="sr-only">Đang tải nội dung…</span>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-56 animate-pulse rounded-3xl bg-white ring-1 ring-ink/5" />
-        ))}
+        <div className="h-16 animate-pulse rounded-2xl bg-white ring-1 ring-ink/5" />
+        <div className="h-[520px] animate-pulse rounded-2xl bg-white ring-1 ring-ink/5" />
       </div>
     );
 
-  const status = dirty
-    ? { dot: "bg-orange-500", text: "Có thay đổi chưa lưu" }
-    : hasCustom
-      ? { dot: "bg-emerald-500", text: `Đã lưu${savedAt ? ` lúc ${formatTime(savedAt)}` : ""}` }
-      : { dot: "bg-ink/25", text: "Đang dùng nội dung mặc định" };
-
-  /* Ô nhập chữ — một dòng (input) hoặc nhiều dòng (textarea) */
-  const text = (path, label, { max = 200, rows, hint } = {}) => (
-    <Field
-      key={path}
-      path={path}
-      label={label}
-      hint={hint}
-      max={max}
-      rows={rows}
-      value={getIn(content, path)}
-      error={errors[path]}
-      onChange={edit}
-    />
-  );
-  const image = (path, label, { aspect, hint, frame }) => (
-    <ImageField
-      key={path}
-      path={path}
-      label={label}
-      hint={hint}
-      aspect={aspect}
-      frame={frame}
-      value={getIn(content, path)}
-      changed={path in files}
-      error={errors[`${path}.src`]}
-      onPick={pickImage}
-      onPos={(p) => edit(`${path}.pos`, p)}
-      onUndo={undoImage}
-    />
-  );
-
   return (
-    <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
-      {/* Thanh thao tác — dính trên cùng khi cuộn để luôn bấm Lưu được */}
+    <div className="mx-auto max-w-7xl space-y-4">
+      {/* Thanh trên cùng — dính khi cuộn để luôn bấm Lưu được */}
       <div className="sticky top-16 z-30 flex flex-col gap-2 rounded-2xl bg-white/90 p-2.5 shadow-card ring-1 ring-ink/10 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 sm:pl-5 lg:top-3">
-        <p className="flex items-center gap-2.5 text-sm text-ink-soft" role="status">
-          <span className={cn("size-2.5 shrink-0 rounded-full", status.dot)} aria-hidden="true" />
-          <span className={cn(dirty && "font-semibold text-ink")}>{status.text}</span>
-          <span className="hidden text-xs text-ink-muted lg:inline">
-            · Bố cục giữ nguyên, chỉ đổi chữ và ảnh · Ctrl + S để lưu
-          </span>
+        <p
+          className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-ink-soft"
+          role="status"
+        >
+          <span className="font-bold text-ink">Về chúng tôi</span>
+          {dirty ? (
+            <span className="font-semibold text-orange-600">· {changes} chỗ đã sửa</span>
+          ) : (
+            <span className="flex items-center gap-2">
+              ·
+              <span
+                className={cn("size-2 rounded-full", hasCustom ? "bg-emerald-500" : "bg-ink/25")}
+                aria-hidden="true"
+              />
+              {hasCustom
+                ? `Đã lưu${savedAt ? ` lúc ${formatTime(savedAt)}` : ""}`
+                : "Đang dùng nội dung mặc định"}
+            </span>
+          )}
         </p>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/gioi-thieu"
-            target="_blank"
-            aria-label="Xem trang (mở tab mới)"
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-ink/15 bg-white text-sm font-semibold text-ink transition hover:bg-paper max-sm:w-11 sm:px-4"
-          >
-            <Icon name="external" className="size-4" />
-            <span className="max-sm:hidden">Xem trang</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setConfirmReset(true)}
-            disabled={!hasCustom || saving}
-            aria-label="Khôi phục mặc định"
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-ink/15 bg-white text-sm font-semibold text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-40 max-sm:w-11 sm:px-4"
-          >
-            <Icon name="refresh" className="size-4" />
-            <span className="max-sm:hidden">Khôi phục mặc định</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {dirty ? (
+            <>
+              <BarButton onClick={undo} disabled={!history.length || saving}>
+                <span aria-hidden="true">↶</span> Hoàn tác
+              </BarButton>
+              <BarButton onClick={() => setConfirm("discard")} disabled={saving}>
+                Hủy
+              </BarButton>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/gioi-thieu"
+                target="_blank"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-paper"
+              >
+                <Icon name="external" className="size-4" />
+                Xem trang
+              </Link>
+              {hasCustom && (
+                <BarButton onClick={() => setConfirm("reset")}>
+                  <Icon name="refresh" className="size-4" />
+                  Khôi phục mặc định
+                </BarButton>
+              )}
+            </>
+          )}
           <button
             type="button"
             onClick={save}
             disabled={!dirty || saving}
-            className="group relative inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-full bg-navy-950 pr-12 pl-6 text-sm leading-none font-semibold text-white transition hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-orange-500 px-6 text-sm font-semibold text-white shadow-card transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-ink/25 disabled:shadow-none"
           >
-            {saving ? "Đang lưu…" : "Lưu thay đổi"}
-            <span className="absolute right-1 flex size-9 items-center justify-center rounded-full bg-orange-500">
-              {saving ? (
+            {saving ? (
+              <>
                 <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              ) : (
-                <Icon name="check" className="size-4" strokeWidth={2.5} />
-              )}
-            </span>
+                Đang lưu…
+              </>
+            ) : dirty ? (
+              `Lưu (${changes})`
+            ) : (
+              "Lưu thay đổi"
+            )}
           </button>
         </div>
       </div>
 
-      {/* 1 — Đầu trang */}
-      <Card n="1" title="Đầu trang" desc="Dòng nhỏ và mô tả dưới tiêu đề “Về chúng tôi”.">
-        <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
-          {text("header.eyebrow", "Dòng nhỏ phía trên", { max: 60 })}
-          {text("header.description", "Mô tả", { max: 300, rows: 3 })}
-        </div>
-      </Card>
-
-      {/* 2 — Câu chuyện */}
-      <Card
-        n="2"
-        title="Câu chuyện của chúng tôi"
-        desc="Phần giới thiệu đầu tiên, kèm hồ sơ nhanh và ảnh đại diện."
-      >
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-4">
-            {text("story.eyebrow", "Dòng nhỏ phía trên tiêu đề", { max: 60 })}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {text("story.titleLead", "Tiêu đề (chữ đen)", { max: 120, rows: 2 })}
-              {text("story.titleAccent", "Tiêu đề (chữ cam)", { max: 120, rows: 2 })}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {text("story.taglines.0", "Thông điệp 1", { max: 120, rows: 2 })}
-              {text("story.taglines.1", "Thông điệp 2", { max: 120, rows: 2 })}
-            </div>
-            {text("story.paragraphs.0", "Đoạn giới thiệu 1", { max: 800, rows: 4 })}
-            {text("story.paragraphs.1", "Đoạn giới thiệu 2", { max: 800, rows: 4 })}
-            <fieldset className="rounded-2xl bg-paper/70 p-4 ring-1 ring-ink/5">
-              <legend className="px-1 text-[13px] font-semibold text-ink">Hồ sơ nhanh</legend>
-              <div className="mt-1 grid gap-4 sm:grid-cols-2">
-                {content.story.facts.map((_, i) => (
-                  <div key={i} className="space-y-2.5">
-                    {text(`story.facts.${i}.label`, `Mục ${i + 1} — tên`, { max: 40 })}
-                    {text(`story.facts.${i}.value`, `Mục ${i + 1} — nội dung`, {
-                      max: 160,
-                      rows: 2,
-                    })}
-                  </div>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-          <div className="space-y-4">
-            {image("story.image", "Ảnh đại diện", {
-              aspect: "aspect-3/4",
-              frame: "max-w-[300px]",
-              hint: "Khung dọc, hiển thị bên phải phần giới thiệu.",
-            })}
-            {text("story.image.alt", "Mô tả ảnh", {
-              max: 200,
-              hint: "Cho người khiếm thị và công cụ tìm kiếm",
-            })}
-          </div>
-        </div>
-      </Card>
-
-      {/* 3 — Giá trị cốt lõi */}
-      <Card n="3" title="Giá trị cốt lõi" desc="Hai thẻ Tầm nhìn và Sứ mệnh.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {text("core.eyebrow", "Dòng nhỏ phía trên", { max: 60 })}
-          {text("core.title", "Tiêu đề", { max: 100 })}
-        </div>
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          {[
-            ["core.vision", "Tầm nhìn", "bg-orange-500"],
-            ["core.mission", "Sứ mệnh", "bg-navy-950"],
-          ].map(([base, name, tone]) => (
-            <div key={base} className="space-y-4 rounded-2xl bg-paper/70 p-4 ring-1 ring-ink/5">
-              <p className="flex items-center gap-2 text-[13px] font-bold text-ink">
-                <span className={cn("size-3 rounded-full", tone)} aria-hidden="true" />
-                {name}
-              </p>
-              {image(`${base}.image`, "Ảnh nền thẻ", {
-                aspect: "aspect-4/3",
-                hint: "Được phủ màu thương hiệu, chữ nằm ở đáy thẻ.",
-              })}
-              {text(`${base}.text`, "Nội dung", { max: 400, rows: 4 })}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* 4 — Chuẩn mực sản xuất */}
-      <Card n="4" title="Chuẩn mực sản xuất" desc="Năm nguyên tắc, hiển thị dạng danh sách có số.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {text("standards.eyebrow", "Dòng nhỏ phía trên", { max: 60 })}
-          {text("standards.intro", "Câu giới thiệu", { max: 300, rows: 2 })}
-          {text("standards.titleLead", "Tiêu đề (chữ đen)", { max: 120 })}
-          {text("standards.titleAccent", "Tiêu đề (chữ cam)", { max: 120 })}
-        </div>
-        <ol className="mt-6 grid gap-4 lg:grid-cols-2">
-          {content.standards.items.map((_, i) => (
-            <li key={i} className="space-y-3 rounded-2xl bg-paper/70 p-4 ring-1 ring-ink/5">
-              <span className="flex size-7 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
-                {i + 1}
-              </span>
-              {text(`standards.items.${i}.title`, "Tên chuẩn mực", { max: 80 })}
-              {text(`standards.items.${i}.desc`, "Mô tả", { max: 300, rows: 3 })}
-            </li>
-          ))}
-        </ol>
-      </Card>
-
-      {/* 5 — Hệ sinh thái dịch vụ */}
-      <Card
-        n="5"
-        title="Hệ sinh thái dịch vụ"
-        desc="Sáu thẻ ảnh cuộn ngang. Đường dẫn của từng thẻ (tới trang dịch vụ) được giữ nguyên."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          {text("ecosystem.eyebrow", "Dòng nhỏ phía trên", { max: 60 })}
-          {text("ecosystem.tagline", "Khẩu hiệu bên phải tiêu đề", { max: 60 })}
-        </div>
-        <ul className="mt-6 grid gap-4 lg:grid-cols-2">
-          {content.ecosystem.items.map((_, i) => (
-            <li
-              key={i}
-              className="flex flex-col gap-4 rounded-2xl bg-paper/70 p-4 ring-1 ring-ink/5 sm:flex-row"
-            >
-              <div className="shrink-0 sm:w-40">
-                {image(`ecosystem.items.${i}.image`, `Ảnh thẻ ${i + 1}`, {
-                  aspect: "aspect-4/5",
-                  frame: "max-w-[200px]",
-                })}
-              </div>
-              <div className="min-w-0 flex-1 space-y-3">
-                {text(`ecosystem.items.${i}.name`, "Tên dịch vụ", { max: 100, rows: 2 })}
-                {text(`ecosystem.items.${i}.desc`, "Mô tả ngắn", { max: 200, rows: 3 })}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <p className="pb-4 text-left text-xs leading-relaxed text-ink-muted">
-        Ảnh nền đầu trang, khối “Khách hàng tin tưởng”, showreel và danh sách đối tác dùng chung với
-        các trang khác nên chưa chỉnh ở đây.
+      <p className="text-left text-xs leading-relaxed text-ink-muted">
+        Rê chuột vào chữ hoặc ảnh để sửa:{" "}
+        <span className="font-semibold text-blue-600">viền xanh nét đứt</span> = sửa được,{" "}
+        <span className="font-semibold text-orange-600">viền cam</span> = đang gõ. Chỉ đổi nội dung
+        chữ và ảnh — font, cỡ chữ, màu giữ đúng thiết kế. Chưa bấm Lưu thì khách chưa thấy thay đổi.
+        <span className="hidden lg:inline"> · Ctrl + S lưu · Ctrl + Z hoàn tác</span>
       </p>
 
+      {/* Chính giao diện trang — bấm vào là sửa. Chặn các liên kết để không rời trang quản trị. */}
+      <div
+        className="edit-canvas isolate overflow-clip rounded-2xl bg-white shadow-card ring-1 ring-ink/15"
+        onClickCapture={(e) => e.target.closest?.("a[href]") && e.preventDefault()}
+      >
+        <AboutHeader header={content.header} edit={edit} />
+        <Profile story={content.story} edit={edit} />
+        <CoreValues core={content.core} edit={edit} />
+        <Standards standards={content.standards} edit={edit} />
+        <Ecosystem ecosystem={content.ecosystem} edit={edit} />
+        <AboutValues values={content.values} edit={edit} />
+      </div>
+
+      <p className="pb-4 text-left text-xs leading-relaxed text-ink-muted">
+        Ảnh nền đầu trang, showreel và danh sách đối tác dùng chung với các trang khác nên chưa sửa
+        ở đây. Trên website, 6 thẻ dịch vụ cuộn ngang; ở đây xếp thành lưới để sửa cùng lúc.
+      </p>
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept={IMAGE_TYPES.join(",")}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          pickImage(e.target.files?.[0]);
+          e.target.value = ""; // cho phép chọn lại đúng tệp vừa chọn
+        }}
+      />
+
       <ConfirmDialog
-        open={confirmReset}
+        open={confirm === "discard"}
+        tone="default"
+        icon="alert"
+        title={`Bỏ ${changes} chỗ đã sửa?`}
+        description="Mọi thay đổi chưa lưu sẽ mất, trang trở lại như lần lưu gần nhất."
+        confirmLabel="Bỏ thay đổi"
+        onConfirm={discard}
+        onCancel={() => setConfirm(null)}
+      />
+      <ConfirmDialog
+        open={confirm === "reset"}
         tone="default"
         icon="refresh"
         title="Khôi phục nội dung mặc định?"
         description="Toàn bộ chữ và ảnh bạn đã chỉnh sẽ bị bỏ, trang Về chúng tôi quay về như ban đầu. Ảnh bạn đã tải lên sẽ bị xoá."
         confirmLabel="Khôi phục"
-        loading={resetting}
+        loading={busy}
         onConfirm={reset}
-        onCancel={() => setConfirmReset(false)}
+        onCancel={() => setConfirm(null)}
       />
     </div>
   );
 }
 
-/* ── Thành phần giao diện ── */
-
-function Card({ n, title, desc, children }) {
+function BarButton({ children, ...props }) {
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-card ring-1 ring-ink/5 sm:p-7">
-      <header className="mb-5 flex items-start gap-3">
-        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[11px] font-bold text-white">
-          {n}
-        </span>
-        <div>
-          <h2 className="text-lg font-bold tracking-tight text-ink">{title}</h2>
-          {desc && <p className="mt-0.5 text-left text-sm text-ink-soft">{desc}</p>}
-        </div>
-      </header>
+    <button
+      type="button"
+      {...props}
+      className="inline-flex h-11 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-paper disabled:cursor-not-allowed disabled:opacity-40"
+    >
       {children}
-    </section>
-  );
-}
-
-function Field({ path, label, hint, max, rows, value, error, onChange }) {
-  const Tag = rows ? "textarea" : "input";
-  const len = (value ?? "").length;
-  return (
-    <label className="block">
-      <span className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-semibold text-ink">
-        <span>
-          {label}
-          {hint && <span className="font-normal text-ink-muted"> - {hint}</span>}
-        </span>
-        {rows && (
-          <span
-            className={cn(
-              "shrink-0 text-[11px] font-normal tabular-nums",
-              len >= max * 0.9 ? "text-orange-600" : "text-ink-muted",
-            )}
-          >
-            {len}/{max}
-          </span>
-        )}
-      </span>
-      <Tag
-        value={value ?? ""}
-        onChange={(e) => onChange(path, e.target.value)}
-        maxLength={max}
-        rows={rows}
-        aria-invalid={error ? "true" : undefined}
-        className={cn(
-          "field",
-          rows && "min-h-[3.25rem] resize-y leading-relaxed",
-          error && "border-red-300",
-        )}
-      />
-      {error && (
-        <span role="alert" className="mt-1 block pl-1 text-left text-[12px] text-red-600">
-          {error}
-        </span>
-      )}
-    </label>
-  );
-}
-
-/**
- * Ô ảnh: khung xem trước đúng tỉ lệ khung trên website (object-cover) + 2 thanh trượt chọn phần ảnh được giữ lại
- * khi cắt khung + nút đổi ảnh. Ảnh mới chỉ tải lên Cloudinary khi bấm "Lưu thay đổi".
- */
-function ImageField({
-  path,
-  label,
-  hint,
-  aspect,
-  frame,
-  value,
-  changed,
-  error,
-  onPick,
-  onPos,
-  onUndo,
-}) {
-  const input = useRef(null);
-  const pt = parsePos(value.pos);
-  const id = `img-${path.replace(/\./g, "-")}`;
-  return (
-    <div>
-      <p className="mb-1.5 text-[13px] font-semibold text-ink">{label}</p>
-      <div
-        className={cn(
-          "relative w-full overflow-hidden rounded-2xl bg-paper-200 ring-1 ring-ink/10",
-          aspect,
-          frame,
-        )}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- xem trước trong trang quản trị */}
-        <img
-          src={cdn(value.src, 640)}
-          alt=""
-          draggable={false}
-          className="size-full object-cover"
-          style={{ objectPosition: value.pos }}
-        />
-        {changed && (
-          <span className="absolute top-2 left-2 rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white uppercase shadow">
-            Ảnh mới
-          </span>
-        )}
-      </div>
-
-      <input
-        ref={input}
-        type="file"
-        accept={IMAGE_TYPES.join(",")}
-        className="sr-only"
-        tabIndex={-1}
-        onChange={(e) => {
-          onPick(path, e.target.files?.[0]);
-          e.target.value = ""; // cho phép chọn lại đúng tệp vừa chọn
-        }}
-      />
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-navy-950 px-4 text-[13px] font-semibold text-white transition hover:bg-navy-800"
-        >
-          <Icon name="image" className="size-4" />
-          Đổi ảnh
-        </button>
-        {changed && (
-          <button
-            type="button"
-            onClick={() => onUndo(path)}
-            className="inline-flex h-10 items-center rounded-full border border-ink/15 bg-white px-4 text-[13px] font-semibold text-ink transition hover:bg-paper"
-          >
-            Giữ ảnh cũ
-          </button>
-        )}
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        <Slider
-          id={`${id}-x`}
-          label="Ngang"
-          ctx={label}
-          value={pt.x}
-          onChange={(x) => onPos(formatPos({ x, y: pt.y }))}
-        />
-        <Slider
-          id={`${id}-y`}
-          label="Dọc"
-          ctx={label}
-          value={pt.y}
-          onChange={(y) => onPos(formatPos({ x: pt.x, y }))}
-        />
-      </div>
-      <p className="mt-1.5 text-left text-[11px] leading-snug text-ink-muted">
-        {hint ? `${hint} ` : ""}Kéo thanh trượt để chọn phần ảnh giữ lại khi cắt khung. Tối đa{" "}
-        {MAX_IMAGE_MB}MB.
-      </p>
-      {error && (
-        <span
-          role="alert"
-          data-invalid="true"
-          className="mt-1 block text-left text-[12px] text-red-600"
-        >
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Slider({ id, label, ctx, value, onChange }) {
-  return (
-    <label htmlFor={id} className="flex items-center gap-3 text-[12px] text-ink-soft">
-      <span className="w-11 shrink-0">{label}</span>
-      <input
-        id={id}
-        aria-label={`Vị trí ${label.toLowerCase()} của ${ctx}`}
-        type="range"
-        min={0}
-        max={100}
-        step={1}
-        value={Math.round(value)}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-6 min-w-0 flex-1 cursor-pointer accent-orange-500"
-      />
-      <span className="w-9 shrink-0 text-right text-ink-muted tabular-nums">
-        {Math.round(value)}%
-      </span>
-    </label>
+    </button>
   );
 }

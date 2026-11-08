@@ -19,6 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
+  if (slug === "__none") return {}; // tham số giữ chỗ lúc build — không gọi backend
   // Backend chập chờn → dùng tiêu đề mặc định thay vì gắn "404" cho trang đang tồn tại
   const p = await getProduct(slug).catch(() => null);
   if (!p) return {};
@@ -44,6 +45,8 @@ export default function ProductPage({ params }) {
 
 async function ProductView({ params }) {
   const { slug } = await params;
+  // "__none" chỉ là tham số giữ chỗ lúc build (khi backend chưa có sản phẩm) — không gọi backend, trả 404 ngay
+  if (slug === "__none") notFound();
   const [p, products] = await Promise.all([getProduct(slug), getProducts()]);
   if (!p) notFound();
 

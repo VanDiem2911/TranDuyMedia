@@ -122,23 +122,26 @@ async function request(path) {
   return (await res.json()).data;
 }
 
-// LỖI KẾT NỐI không được cache: hàm "use cache" ném lỗi ra ngoài (Next không lưu kết quả lỗi), hàm bọc bên
-// ngoài mới xử lý → backend chập chờn vài giây không làm trang bị "trống" / "404" suốt nhiều phút.
+// Lỗi kết nối (backend đang ngủ / chưa chạy lúc build…) KHÔNG được làm hỏng bản build: ném lỗi ra ngoài hàm
+// "use cache" sẽ làm Next dừng cả quá trình build. Nên bắt lỗi ngay trong hàm, trả danh sách rỗng và chỉ cache
+// rất ngắn để trang tự lấy lại dữ liệu thật khi backend sẵn sàng; thành công thì cache như thường.
 async function cachedProducts() {
   "use cache";
   cacheTag(PRODUCTS_TAG);
-  cacheLife("minutes");
-  // Kích thước ảnh thật → thẻ sản phẩm chọn đúng bản ảnh đủ nét cho khung đóng sẵn
-  return Promise.all(((await request("/products")) ?? []).map((p) => withSizes(toView(p))));
-}
-
-export async function getProducts() {
   try {
-    return await cachedProducts();
+    // Kích thước ảnh thật → thẻ sản phẩm chọn đúng bản ảnh đủ nét cho khung đóng sẵn
+    const list = await Promise.all(
+      ((await request("/products")) ?? []).map((p) => withSizes(toView(p))),
+    );
+    cacheLife("minutes");
+    return list;
   } catch {
+    cacheLife({ stale: 30, revalidate: 30, expire: 300 });
     return [];
   }
 }
+
+export const getProducts = cachedProducts;
 
 /**
  * Sản phẩm theo slug: null CHỈ khi backend trả 404 (thật sự không có → trang 404).
