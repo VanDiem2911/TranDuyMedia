@@ -1,11 +1,12 @@
 import { SmartImage as Image } from "@/components/ui/SmartImage";
 import Link from "next/link";
 import { Container } from "@/components/ui";
+import { BannerVideo } from "./BannerVideo";
 import { cn } from "@/lib/utils";
 
 /**
  * Banner đầu trang con — MỌI trang con cùng chiều cao: 2/3 màn hình (tối thiểu 460px, theo mẫu ButStudio).
- * Nền: 1 ảnh tối (image) HOẶC các cột ảnh trôi lên/xuống so le rất chậm (columns: [[src, src, src], ...]).
+ * Nền: 1 video lặp (video: { src, poster }) HOẶC 1 ảnh tối (image) HOẶC các cột ảnh trôi lên/xuống so le rất chậm (columns: [[src, src, src], ...]).
  * Mỗi ô có thể là src hoặc { src, pos, zoom } — dùng để cắt nhiều vùng khác nhau từ cùng một ảnh.
  * crumbs: các cấp TRƯỚC trang hiện tại (sau "Trang chủ") [{ label, href }] — breadcrumb không hiện trang hiện tại. eyebrow: dòng nhỏ trên tiêu đề (mặc định = breadcrumb).
  * Cụm nội dung căn GIỮA theo chiều cao vùng nền nằm dưới header (header nổi cao 84px: top 20 + 64).
@@ -19,6 +20,7 @@ export function PageHeader({
   image,
   imagePos = "center",
   columns,
+  video,
   children,
 }) {
   return (
@@ -26,7 +28,9 @@ export function PageHeader({
       className="grain relative isolate flex min-h-[max(460px,calc(var(--screen)*0.66))] items-center overflow-hidden bg-navy-950 pt-[calc(76px+2rem)] pb-24 text-white sm:pt-[calc(84px+2rem)]"
       data-nav-theme="dark"
     >
-      {columns ? (
+      {video ? (
+        <BannerVideo src={video.src} poster={video.poster} />
+      ) : columns ? (
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-10 bleed-cap grid grid-cols-3 gap-2 px-2 sm:grid-cols-4 lg:grid-cols-6"
@@ -90,12 +94,12 @@ export function PageHeader({
       <div
         className={cn(
           "absolute inset-0 -z-10",
-          columns
+          columns || video
             ? "bg-navy-950/70"
             : "bg-linear-to-t from-navy-950 via-navy-950/55 to-navy-950/25",
         )}
       />
-      {columns && (
+      {(columns || video) && (
         <div className="absolute inset-0 -z-10 bg-linear-to-t from-navy-950 via-navy-950/30 to-navy-950/60" />
       )}
 

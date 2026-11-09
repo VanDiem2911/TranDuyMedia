@@ -20,9 +20,11 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { describeError, revalidateSite, uploadFile } from "../products/jobs";
 import { MAX_IMAGE_MB } from "../products/media-utils";
+import { BANNER_VIDEO_MB } from "./inline-edit";
 import { LISTS } from "./about-lists";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 const UPLOAD_FOLDER = "about"; // thư mục Cloudinary — backend chỉ tự dọn ảnh cũ trong thư mục này
 const HISTORY_MAX = 100;
 
@@ -122,6 +124,7 @@ export function AboutEditor() {
   const files = useRef({}); // địa chỉ blob: của ảnh vừa chọn → tệp chưa tải lên
   const blobs = useRef([]);
   const fileInput = useRef(null);
+  const videoInput = useRef(null);
   const pickTarget = useRef(null);
 
   /** Đặt nội dung mới (state + ref cùng lúc để các thao tác liên tiếp luôn thấy bản mới nhất). */
@@ -209,6 +212,38 @@ export function AboutEditor() {
     savedRef.current = savedObj;
   }, [savedObj]);
 
+  /** Video nền banner chọn từ máy: xem trước ngay bằng địa chỉ blob:, chỉ tải lên Cloudinary khi bấm Lưu. */
+  const pickVideo = useCallback(
+    (file) => {
+      const path = pickTarget.current;
+      if (!file || !path) return;
+      if (!VIDEO_TYPES.includes(file.type)) {
+        toast.warning(`“${file.name}” không phải video được hỗ trợ (MP4, MOV hoặc WebM).`, {
+          title: "Chưa chọn được video",
+        });
+        return;
+      }
+      if (file.size > BANNER_VIDEO_MB * 1024 * 1024) {
+        toast.warning(
+          `“${file.name}” nặng ${(file.size / 1024 / 1024).toFixed(0)}MB (video nền tối đa ${BANNER_VIDEO_MB}MB). Hãy nén nhỏ lại để trang tải nhanh.`,
+          { title: "Video quá nặng" },
+        );
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      blobs.current.push(url);
+      files.current[url] = file;
+      commit((c) =>
+        setIn(
+          setIn(setIn(c, `${path}.src`, url), `${path}.poster`, ""),
+          "header.banner.mode",
+          "video",
+        ),
+      );
+    },
+    [commit],
+  );
+
   /** Bộ công cụ đưa cho các khối trên trang (xem components/admin/about/inline-edit.jsx) */
   const edit = useMemo(
     () => ({
@@ -222,6 +257,18 @@ export function AboutEditor() {
         pickTarget.current = path;
         fileInput.current?.click();
       },
+      pickVideo: (path) => {
+        pickTarget.current = path;
+        videoInput.current?.click();
+      },
+      clearVideo: (bannerPath) =>
+        commit((c) =>
+          setIn(
+            setIn(c, `${bannerPath}.video`, { src: "", poster: "" }),
+            `${bannerPath}.mode`,
+            "images",
+          ),
+        ),
       setPosLive: (path, pos) => put(setIn(contentRef.current, `${path}.pos`, pos)),
       listInfo: (listPath) => ({
         len: getIn(contentRef.current, listPath).length,
@@ -268,6 +315,15 @@ export function AboutEditor() {
 
   const save = async () => {
     if (saving || !content || !dirty) return;
+    if (content.header.banner.mode === "video" && !content.header.banner.video.src) {
+      toast.warning(
+        "Banner đang chọn nền là video nhưng chưa có video. Hãy chọn video hoặc chuyển về ảnh trôi.",
+        {
+          title: "Chưa chọn video nền",
+        },
+      );
+      return;
+    }
     setSaving(true);
     // Ảnh mới chọn = những ô ảnh đang trỏ tới địa chỉ blob:
     const pending = Object.entries(flatten(content)).filter(
@@ -294,10 +350,14 @@ export function AboutEditor() {
               prog[i] = p;
               report();
             });
-            return [path, res.url];
+            return [path, res.url, res.type === "video" ? (res.poster ?? "") : null];
           }),
         );
-        for (const [path, url] of uploaded) next = setIn(next, path, url);
+        for (const [path, url, poster] of uploaded) {
+          next = setIn(next, path, url);
+          // Video: lưu kèm ảnh bìa (Cloudinary tự chọn khung đẹp nhất) để hiện khi chưa phát được
+          if (poster !== null) next = setIn(next, path.replace(/\.src$/, ".poster"), poster);
+        }
         // Ảnh đã lên Cloudinary → nhớ lại, lỡ bước lưu lỗi thì thử lại không tải ảnh lần nữa
         put(next);
       }
@@ -426,15 +486,15 @@ export function AboutEditor() {
           )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {history.length > 0 && (
+            <BarButton onClick={undo} disabled={saving}>
+              <span aria-hidden="true">↶</span> Hoàn tác
+            </BarButton>
+          )}
           {dirty ? (
-            <>
-              <BarButton onClick={undo} disabled={!history.length || saving}>
-                <span aria-hidden="true">↶</span> Hoàn tác
-              </BarButton>
-              <BarButton onClick={() => setConfirm("discard")} disabled={saving}>
-                Hủy
-              </BarButton>
-            </>
+            <BarButton onClick={() => setConfirm("discard")} disabled={saving}>
+              Hủy
+            </BarButton>
           ) : (
             <>
               <Link
@@ -499,6 +559,18 @@ export function AboutEditor() {
         ở đây. Trên website, 6 thẻ dịch vụ cuộn ngang; ở đây xếp thành lưới để sửa cùng lúc.
       </p>
 
+      <input
+        ref={videoInput}
+        type="file"
+        accept={VIDEO_TYPES.join(",")}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          pickVideo(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
       <input
         ref={fileInput}
         type="file"

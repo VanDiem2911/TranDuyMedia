@@ -20,19 +20,25 @@ import { cn, pad } from "@/lib/utils";
 
 /* ── Đầu trang ── */
 export function AboutHeader({ header, edit }) {
+  const mode = header.banner?.mode;
+  const clip = header.banner?.video;
+  // Chọn "video" mà chưa có video → vẫn dùng ảnh trôi (không bao giờ để banner trống)
+  const video =
+    mode === "video" && clip?.src ? { src: clip.src, poster: clip.poster || undefined } : undefined;
   const banner = (
     <PageHeader
       title="Về chúng tôi"
       eyebrow={<T edit={edit} path="header.eyebrow" value={header.eyebrow} />}
       description={<T edit={edit} path="header.description" value={header.description} />}
-      columns={header.columns}
+      columns={video ? undefined : header.columns}
+      video={video}
     />
   );
   if (!edit) return banner;
   return (
     <div className="relative">
       {banner}
-      <BannerTools edit={edit} columns={header.columns} />
+      <BannerTools edit={edit} columns={header.columns} banner={header.banner} />
     </div>
   );
 }

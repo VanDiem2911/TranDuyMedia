@@ -495,11 +495,32 @@ export function RemoveButton({ edit, listPath, index }) {
   );
 }
 
-/* ── Ảnh nền đầu trang (banner): 6 cột × 3 ảnh ── */
+/* ── Nền banner đầu trang: 18 ảnh trôi HOẶC 1 video lặp ── */
 
-/** Nút "Đổi ảnh nền" trên banner + bảng 18 ảnh để chọn ảnh cần thay. */
-export function BannerTools({ edit, columns }) {
+export const BANNER_VIDEO_MB = 60; // video nền nặng làm chậm trang → giới hạn thấp hơn video sản phẩm
+
+function ModeTab({ active, onSelect, children }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition",
+        active ? "bg-navy-950 text-white shadow" : "text-ink-soft hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Nút "Đổi nền banner" + hộp thoại chọn kiểu nền (ảnh trôi / video). */
+export function BannerTools({ edit, columns, banner }) {
   const [open, setOpen] = useState(false);
+  const mode = banner?.mode ?? "images";
+  const clip = banner?.video?.src ?? "";
 
   useEffect(() => {
     if (!open) return;
@@ -521,7 +542,7 @@ export function BannerTools({ edit, columns }) {
         className="absolute top-4 right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-ink shadow-lg ring-1 ring-ink/10 transition hover:bg-paper"
       >
         <Icon name="image" className="size-4" />
-        Đổi ảnh nền
+        Đổi nền banner
       </button>
 
       {open &&
@@ -540,11 +561,10 @@ export function BannerTools({ edit, columns }) {
               <div className="flex items-start justify-between gap-4 border-b border-ink/10 px-5 py-4 sm:px-6">
                 <div>
                   <h2 id="banner-title" className="text-lg font-bold tracking-tight text-ink">
-                    Ảnh nền đầu trang
+                    Nền banner đầu trang
                   </h2>
                   <p className="mt-0.5 text-left text-sm text-ink-soft">
-                    18 ảnh trôi chậm phía sau tiêu đề “Về chúng tôi”. Bấm vào ảnh muốn thay rồi chọn
-                    ảnh mới từ máy.
+                    Chọn nền phía sau tiêu đề “Về chúng tôi”: 18 ảnh trôi chậm hoặc một video lặp.
                   </p>
                 </div>
                 <button
@@ -557,49 +577,152 @@ export function BannerTools({ edit, columns }) {
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-5 sm:p-6">
-                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
-                  {columns.map((col, c) => (
-                    <div key={c} className="flex flex-col gap-2.5">
-                      {col.map((tile, r) => {
-                        const path = `header.columns.${c}.${r}`;
-                        const isNew = tile.src.startsWith("blob:");
-                        return (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => edit.pickImage(`${path}`)}
-                            aria-label={`Đổi ảnh cột ${c + 1}, ảnh ${r + 1}`}
-                            className="group relative aspect-3/4 overflow-hidden rounded-xl bg-paper-200 ring-1 ring-ink/10 transition hover:ring-2 hover:ring-orange-500"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element -- xem trước trong trang quản trị */}
-                            <img
-                              src={cdn(tile.src, 320)}
-                              alt=""
-                              draggable={false}
-                              className="size-full object-cover"
-                            />
-                            <span className="absolute inset-0 flex items-center justify-center bg-navy-950/55 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
-                              Đổi ảnh
-                            </span>
-                            {isNew && (
-                              <span className="absolute top-1.5 left-1.5 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
-                                Mới
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
+              <div className="px-5 pt-4 sm:px-6">
+                <div
+                  role="tablist"
+                  aria-label="Kiểu nền banner"
+                  className="flex gap-1 rounded-full bg-paper p-1 ring-1 ring-ink/10"
+                >
+                  <ModeTab
+                    active={mode === "images"}
+                    onSelect={() => edit.setText("header.banner.mode", "images")}
+                  >
+                    Ảnh trôi (18 ảnh)
+                  </ModeTab>
+                  <ModeTab
+                    active={mode === "video"}
+                    onSelect={() => edit.setText("header.banner.mode", "video")}
+                  >
+                    <Icon name="play" className="size-3.5" />
+                    Video
+                  </ModeTab>
                 </div>
               </div>
 
-              <div className="flex justify-end border-t border-ink/10 bg-paper/60 px-5 py-3.5 sm:px-6">
+              <div className="overflow-y-auto p-5 sm:p-6">
+                {mode === "images" ? (
+                  <>
+                    <p className="mb-3 text-left text-sm text-ink-soft">
+                      Bấm vào ảnh muốn thay rồi chọn ảnh mới từ máy.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+                      {columns.map((col, c) => (
+                        <div key={c} className="flex flex-col gap-2.5">
+                          {col.map((tile, r) => {
+                            const isNew = tile.src.startsWith("blob:");
+                            return (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => edit.pickImage(`header.columns.${c}.${r}`)}
+                                aria-label={`Đổi ảnh cột ${c + 1}, ảnh ${r + 1}`}
+                                className="group relative aspect-3/4 overflow-hidden rounded-xl bg-paper-200 ring-1 ring-ink/10 transition hover:ring-2 hover:ring-orange-500"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element -- xem trước trong trang quản trị */}
+                                <img
+                                  src={cdn(tile.src, 320)}
+                                  alt=""
+                                  draggable={false}
+                                  className="size-full object-cover"
+                                />
+                                <span className="absolute inset-0 flex items-center justify-center bg-navy-950/55 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                                  Đổi ảnh
+                                </span>
+                                {isNew && (
+                                  <span className="absolute top-1.5 left-1.5 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
+                                    Mới
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {clip ? (
+                      <div className="overflow-hidden rounded-2xl bg-navy-950 ring-1 ring-ink/10">
+                        <video
+                          key={clip}
+                          src={clip}
+                          poster={banner?.video?.poster || undefined}
+                          muted
+                          loop
+                          autoPlay
+                          playsInline
+                          controls
+                          className="aspect-video max-h-[46svh] w-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => edit.pickVideo("header.banner.video")}
+                        className="flex aspect-video max-h-[46svh] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-ink/25 bg-paper/60 text-ink-soft transition hover:border-orange-500 hover:text-ink"
+                      >
+                        <span className="flex size-12 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
+                          <Icon name="plus" className="size-6" strokeWidth={2.5} />
+                        </span>
+                        <span className="text-sm font-semibold">Chọn video từ máy</span>
+                      </button>
+                    )}
+
+                    {clip && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => edit.pickVideo("header.banner.video")}
+                          className="inline-flex h-10 items-center gap-2 rounded-full bg-navy-950 px-5 text-sm font-semibold text-white hover:bg-navy-800"
+                        >
+                          <Icon name="refresh" className="size-4" />
+                          Đổi video
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => edit.clearVideo("header.banner")}
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-ink/15 bg-white px-5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          <Icon name="trash" className="size-4" />
+                          Gỡ video
+                        </button>
+                        {clip.startsWith("blob:") && (
+                          <span className="inline-flex h-10 items-center rounded-full bg-orange-50 px-4 text-xs font-semibold text-orange-700">
+                            Video mới — sẽ tải lên khi bấm Lưu
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <ul className="list-disc space-y-1 pl-5 text-left text-xs leading-relaxed text-ink-muted">
+                      <li>
+                        Video tự phát, tắt tiếng và lặp lại; có chữ tiêu đề đè lên nên video nên
+                        tối, ít chi tiết.
+                      </li>
+                      <li>
+                        Nên dùng video ngang 1080p, dài 10–30 giây. MP4, MOV hoặc WebM, tối đa{" "}
+                        {BANNER_VIDEO_MB}MB (nặng quá sẽ làm trang tải chậm).
+                      </li>
+                      <li>
+                        Người dùng bật “giảm chuyển động” hoặc “tiết kiệm dữ liệu” chỉ thấy ảnh bìa
+                        của video.
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 border-t border-ink/10 bg-paper/60 px-5 py-3.5 sm:px-6">
+                <p className="text-left text-xs text-ink-muted">
+                  {mode === "video" && !clip
+                    ? "Chưa chọn video — trang sẽ vẫn dùng ảnh trôi cho tới khi bạn chọn."
+                    : "Bấm Lưu ở thanh trên cùng để áp dụng lên website."}
+                </p>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="inline-flex h-11 items-center gap-2 rounded-full bg-navy-950 px-6 text-sm font-semibold text-white hover:bg-navy-800"
+                  className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-navy-950 px-6 text-sm font-semibold text-white hover:bg-navy-800"
                 >
                   <Icon name="check" className="size-4" strokeWidth={2.5} />
                   Xong

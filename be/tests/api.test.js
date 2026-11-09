@@ -579,6 +579,7 @@ describe("API v1", () => {
         columns: Array.from({ length: 6 }, (_, c) =>
           Array.from({ length: 3 }, (_, r) => ({ src: `/images/h${c}${r}.webp` })),
         ),
+        banner: { mode: "images", video: { src: "", poster: "" } },
       },
       story: {
         eyebrow: "Câu chuyện",
@@ -693,6 +694,27 @@ describe("API v1", () => {
         const r = await admin.patch("/api/v1/content/about").send(body);
         assert.equal(r.status, 400);
       }
+    });
+
+    it("banner: chọn video mà chưa có video → 400; có video https → lưu được", async () => {
+      const none = payload();
+      none.header.banner.mode = "video";
+      const r1 = await admin.patch("/api/v1/content/about").send(none);
+      assert.equal(r1.status, 400);
+      assert.ok(r1.body.error.details.some((d) => d.field === "header.banner.video.src"));
+
+      const bad = payload();
+      bad.header.banner = { mode: "video", video: { src: "http://x.test/a.mp4", poster: "" } };
+      assert.equal((await admin.patch("/api/v1/content/about").send(bad)).status, 400);
+
+      const ok = payload();
+      ok.header.banner = {
+        mode: "video",
+        video: { src: "https://res.cloudinary.com/x/video/upload/v1/about/a.mp4", poster: "" },
+      };
+      assert.equal((await admin.patch("/api/v1/content/about").send(ok)).status, 200);
+      const pub = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(pub.body.data.data.header.banner.mode, "video");
     });
 
     it("khôi phục mặc định → xoá bản đã chỉnh", async () => {

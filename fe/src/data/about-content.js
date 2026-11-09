@@ -22,6 +22,8 @@ export const aboutDefaults = {
       "Gia công video, hình ảnh thương mại quảng cáo tại TP.HCM — hơn 10 năm đồng hành cùng doanh nghiệp Việt.",
     // Ảnh nền đầu trang: 6 cột ảnh trôi × 3 ảnh mỗi cột
     columns: aboutHeaderColumns.map((col) => col.map((src) => ({ src }))),
+    // Nền banner: "images" = 18 ảnh trôi ở trên · "video" = video lặp (tải từ máy, lưu trên Cloudinary)
+    banner: { mode: "images", video: { src: "", poster: "" } },
   },
   story: {
     eyebrow: "Câu chuyện của chúng tôi",

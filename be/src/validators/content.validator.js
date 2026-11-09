@@ -15,6 +15,16 @@ const imageUrl = z
   .max(1000)
   .refine((v) => /^https:\/\//i.test(v) || v.startsWith("/"), "Đường dẫn ảnh phải dùng https");
 
+/** Địa chỉ video nền banner: để trống (chưa có) hoặc https / đường dẫn trong website. */
+const videoUrl = z
+  .string()
+  .trim()
+  .max(1000)
+  .refine(
+    (v) => v === "" || /^https:\/\//i.test(v) || v.startsWith("/"),
+    "Đường dẫn video phải dùng https",
+  );
+
 /** Ô văn bản bắt buộc có nội dung (để không làm trống / vỡ bố cục trang). */
 const text = (label, max) =>
   z
@@ -36,6 +46,20 @@ export const aboutSchema = z.object({
     description: text("mô tả đầu trang", 300),
     // Ảnh nền đầu trang: 6 cột ảnh trôi × 3 ảnh mỗi cột
     columns: list(list(z.object({ src: imageUrl }), 3, "Mỗi cột ảnh nền"), 6, "Ảnh nền đầu trang"),
+    // Nền banner: ảnh trôi hoặc video lặp. Chọn "video" thì bắt buộc đã có video.
+    banner: z
+      .object({
+        mode: z.enum(["images", "video"], "Kiểu nền banner không hợp lệ"),
+        video: z.object({ src: videoUrl, poster: videoUrl }),
+      })
+      .superRefine((b, ctx) => {
+        if (b.mode === "video" && !b.video.src)
+          ctx.addIssue({
+            code: "custom",
+            path: ["video", "src"],
+            message: "Chưa chọn video nền cho banner",
+          });
+      }),
   }),
   story: z.object({
     eyebrow: text("tiêu đề nhỏ phần câu chuyện", 60),

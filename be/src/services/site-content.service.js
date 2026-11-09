@@ -10,9 +10,12 @@ function assetsOf(data) {
   const walk = (node) => {
     if (Array.isArray(node)) return node.forEach(walk);
     if (!node || typeof node !== "object") return;
-    if (typeof node.src === "string") {
-      const id = MediaService.publicIdOf(node.src);
-      if (id?.startsWith(prefix)) out.set(id, "image");
+    // src có thể là ảnh hoặc video (banner); poster là ảnh bìa của video — mỗi loại xoá bằng đúng resource_type
+    for (const key of ["src", "poster"]) {
+      if (typeof node[key] !== "string") continue;
+      const id = MediaService.publicIdOf(node[key]);
+      if (id?.startsWith(prefix))
+        out.set(id, key === "src" && /\/video\/upload\//.test(node.src) ? "video" : "image");
     }
     Object.values(node).forEach(walk);
   };
