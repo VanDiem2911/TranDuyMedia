@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
+import { cdn } from "@/lib/cdn";
 import { formatPos, parsePos } from "@/lib/crop";
 import { cn } from "@/lib/utils";
 import { limitOf } from "./about-limits";
@@ -231,7 +232,7 @@ export function EditableText({ edit, path }) {
 
 /* ── Ảnh ── */
 
-function Chip({ icon, children, onClick, active }) {
+function Chip({ icon, children, onClick, active, danger }) {
   return (
     <button
       type="button"
@@ -240,6 +241,7 @@ function Chip({ icon, children, onClick, active }) {
       className={cn(
         "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-ink shadow-md ring-1 ring-ink/10 transition hover:bg-paper",
         active ? "bg-orange-50 ring-orange-500" : "bg-white",
+        danger && "text-red-600 hover:bg-red-50",
       )}
     >
       <Icon name={icon} className="size-3.5" />
@@ -271,8 +273,8 @@ function PosSlider({ label, value, onChange }) {
  * Nút trên ảnh (cha phải có class `group` + `relative`): Đổi ảnh · Cắt ảnh · Alt text.
  * path = đường dẫn của ảnh (vd. "story.image"); altPath = đường dẫn ô mô tả ảnh (chỉ ảnh có mô tả mới có nút Alt text).
  */
-export function ImageTools({ edit, path, altPath }) {
-  const [open, setOpen] = useState(null); // null | "crop" | "alt"
+export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
+  const [open, setOpen] = useState(null); // null | "crop" | "alt" | "href"
   const box = useRef(null);
   const snap = useRef(null);
   const [alt, setAlt] = useState("");
@@ -315,6 +317,21 @@ export function ImageTools({ edit, path, altPath }) {
     if (v && v !== edit.get(altPath)) edit.setText(altPath, v);
     setOpen(null);
   };
+  // Liên kết của thẻ (bấm thẻ trên website thì đi tới đâu)
+  const [href, setHref] = useState("");
+  const hrefOk = /^(\/(?!\/)|https:\/\/)\S*$/.test(href.trim());
+  const toggleHref = () => {
+    if (open === "href") return close();
+    setHref(edit.get(hrefPath) ?? "");
+    setOpen("href");
+  };
+  const saveHref = () => {
+    const v = href.trim();
+    if (hrefOk && v !== edit.get(hrefPath)) edit.setText(hrefPath, v);
+    setOpen(null);
+  };
+  const info = listPath ? edit.listInfo(listPath) : null;
+  const canRemove = info && info.len > info.min;
 
   return (
     <div
@@ -339,6 +356,16 @@ export function ImageTools({ edit, path, altPath }) {
             Alt text
           </Chip>
         )}
+        {hrefPath && (
+          <Chip icon="external" onClick={toggleHref} active={open === "href"}>
+            Liên kết
+          </Chip>
+        )}
+        {canRemove && (
+          <Chip icon="trash" danger onClick={() => edit.removeItem(listPath, index)}>
+            Xóa thẻ
+          </Chip>
+        )}
       </div>
 
       {open === "crop" && (
@@ -358,6 +385,36 @@ export function ImageTools({ edit, path, altPath }) {
             type="button"
             onClick={close}
             className="mt-1 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-navy-950 text-xs font-semibold text-white hover:bg-navy-800"
+          >
+            <Icon name="check" className="size-3.5" strokeWidth={2.5} />
+            Xong
+          </button>
+        </div>
+      )}
+
+      {open === "href" && (
+        <div className="w-72 max-w-[80vw] space-y-2 rounded-2xl bg-white p-3.5 text-left shadow-xl ring-1 ring-ink/10">
+          <label className="block text-xs font-semibold text-ink" htmlFor={`href-${hrefPath}`}>
+            Bấm vào thẻ thì mở trang nào?
+          </label>
+          <input
+            id={`href-${hrefPath}`}
+            value={href}
+            onChange={(e) => setHref(e.target.value.slice(0, 300))}
+            onKeyDown={(e) => e.key === "Enter" && saveHref()}
+            autoFocus
+            placeholder="/dich-vu/cho-thue-studio"
+            aria-invalid={!hrefOk}
+            className="field py-2 text-sm text-ink"
+          />
+          <p className={cn("text-[11px]", hrefOk ? "text-ink-muted" : "text-red-600")}>
+            Trang trong website (bắt đầu bằng /) hoặc địa chỉ https://…
+          </p>
+          <button
+            type="button"
+            onClick={saveHref}
+            disabled={!hrefOk}
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-navy-950 text-xs font-semibold text-white hover:bg-navy-800 disabled:opacity-50"
           >
             <Icon name="check" className="size-3.5" strokeWidth={2.5} />
             Xong
@@ -393,5 +450,165 @@ export function ImageTools({ edit, path, altPath }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* ── Thẻ (card): thêm / xoá ── */
+
+/** Ô "＋ Thêm thẻ" ở cuối danh sách (ẩn khi đã đủ số thẻ tối đa). className quyết định hình dạng cho khớp danh sách. */
+export function AddTile({ edit, listPath, label, className }) {
+  const info = edit.listInfo(listPath);
+  if (info.len >= info.max) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => edit.addItem(listPath)}
+      className={cn(
+        "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-ink/25 text-sm font-semibold text-ink-soft transition hover:border-orange-500 hover:text-ink",
+        className,
+      )}
+    >
+      <span className="flex size-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
+        <Icon name="plus" className="size-5" strokeWidth={2.5} />
+      </span>
+      {label}
+      <span className="text-xs font-normal opacity-70">
+        {info.len}/{info.max}
+      </span>
+    </button>
+  );
+}
+
+/** Nút "Xóa" nhỏ cho thẻ không có ảnh (cha phải có `group` + `relative`). Hiện khi rê chuột. */
+export function RemoveButton({ edit, listPath, index }) {
+  const info = edit.listInfo(listPath);
+  if (info.len <= info.min) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => edit.removeItem(listPath, index)}
+      className="absolute top-3 right-0 z-10 inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-semibold text-red-600 opacity-0 shadow-md ring-1 ring-ink/10 transition group-hover:opacity-100 hover:bg-red-50 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+    >
+      <Icon name="trash" className="size-3.5" />
+      Xóa {info.noun}
+    </button>
+  );
+}
+
+/* ── Ảnh nền đầu trang (banner): 6 cột × 3 ảnh ── */
+
+/** Nút "Đổi ảnh nền" trên banner + bảng 18 ảnh để chọn ảnh cần thay. */
+export function BannerTools({ edit, columns }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const key = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", key);
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", key);
+      document.documentElement.style.overflow = prev;
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="absolute top-4 right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-ink shadow-lg ring-1 ring-ink/10 transition hover:bg-paper"
+      >
+        <Icon name="image" className="size-4" />
+        Đổi ảnh nền
+      </button>
+
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="banner-title"
+          >
+            <div
+              onClick={() => setOpen(false)}
+              className="absolute inset-0 [animation:fadeIn_.2s_ease-out_both] bg-navy-950/65 backdrop-blur-sm"
+            />
+            <div className="relative flex max-h-[92svh] w-full max-w-4xl [animation:popIn_.35s_cubic-bezier(.22,1,.36,1)_both] flex-col overflow-hidden rounded-3xl bg-white shadow-soft">
+              <div className="flex items-start justify-between gap-4 border-b border-ink/10 px-5 py-4 sm:px-6">
+                <div>
+                  <h2 id="banner-title" className="text-lg font-bold tracking-tight text-ink">
+                    Ảnh nền đầu trang
+                  </h2>
+                  <p className="mt-0.5 text-left text-sm text-ink-soft">
+                    18 ảnh trôi chậm phía sau tiêu đề “Về chúng tôi”. Bấm vào ảnh muốn thay rồi chọn
+                    ảnh mới từ máy.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Đóng"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-paper hover:text-ink"
+                >
+                  <Icon name="close" className="size-5" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-5 sm:p-6">
+                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+                  {columns.map((col, c) => (
+                    <div key={c} className="flex flex-col gap-2.5">
+                      {col.map((tile, r) => {
+                        const path = `header.columns.${c}.${r}`;
+                        const isNew = tile.src.startsWith("blob:");
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => edit.pickImage(`${path}`)}
+                            aria-label={`Đổi ảnh cột ${c + 1}, ảnh ${r + 1}`}
+                            className="group relative aspect-3/4 overflow-hidden rounded-xl bg-paper-200 ring-1 ring-ink/10 transition hover:ring-2 hover:ring-orange-500"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element -- xem trước trong trang quản trị */}
+                            <img
+                              src={cdn(tile.src, 320)}
+                              alt=""
+                              draggable={false}
+                              className="size-full object-cover"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center bg-navy-950/55 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                              Đổi ảnh
+                            </span>
+                            {isNew && (
+                              <span className="absolute top-1.5 left-1.5 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
+                                Mới
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-ink/10 bg-paper/60 px-5 py-3.5 sm:px-6">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-navy-950 px-6 text-sm font-semibold text-white hover:bg-navy-800"
+                >
+                  <Icon name="check" className="size-4" strokeWidth={2.5} />
+                  Xong
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

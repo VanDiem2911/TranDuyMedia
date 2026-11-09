@@ -573,7 +573,13 @@ describe("API v1", () => {
   describe("nội dung trang Về chúng tôi", () => {
     const img = (src) => ({ src, pos: "50% 30%" });
     const payload = () => ({
-      header: { eyebrow: "Hồ sơ", description: "Mô tả đầu trang" },
+      header: {
+        eyebrow: "Hồ sơ",
+        description: "Mô tả đầu trang",
+        columns: Array.from({ length: 6 }, (_, c) =>
+          Array.from({ length: 3 }, (_, r) => ({ src: `/images/h${c}${r}.webp` })),
+        ),
+      },
       story: {
         eyebrow: "Câu chuyện",
         titleLead: "Đối tác gia công",
@@ -637,13 +643,13 @@ describe("API v1", () => {
       const bad = payload();
       bad.story.paragraphs[1] = "   ";
       bad.story.image.pos = "tuỳ ý";
-      bad.ecosystem.items.pop();
+      bad.values.items = []; // tối thiểu 1 thẻ
       const res = await admin.patch("/api/v1/content/about").send(bad);
       assert.equal(res.status, 400);
       const fields = res.body.error.details.map((d) => d.field);
       assert.ok(fields.includes("story.paragraphs.1"), fields.join());
       assert.ok(fields.includes("story.image.pos"), fields.join());
-      assert.ok(fields.includes("ecosystem.items"), fields.join());
+      assert.ok(fields.includes("values.items"), fields.join());
     });
 
     it("admin lưu → công khai đọc lại đúng nội dung, ảnh trong /images vẫn dùng được", async () => {
@@ -664,6 +670,29 @@ describe("API v1", () => {
       assert.equal(await SiteContent.countDocuments({ key: "about" }), 1);
       const pub = await withCsrf(request(app)).get("/api/v1/content/about");
       assert.equal(pub.body.data.data.header.description, "Mô tả mới");
+    });
+
+    it("thêm / xoá thẻ: số thẻ thay đổi được trong giới hạn, ngoài giới hạn → 400", async () => {
+      const ok = payload();
+      ok.values.items.push({ title: "Thẻ mới", desc: "Mô tả", image: img("/images/n.webp") }); // 4 thẻ
+      ok.ecosystem.items.pop(); // 5 thẻ
+      ok.standards.items.splice(1, 2); // 3 nguyên tắc
+      ok.ecosystem.items[0].href = "https://example.com/dich-vu";
+      assert.equal((await admin.patch("/api/v1/content/about").send(ok)).status, 200);
+      const pub = await withCsrf(request(app)).get("/api/v1/content/about");
+      assert.equal(pub.body.data.data.values.items.length, 4);
+      assert.equal(pub.body.data.data.ecosystem.items.length, 5);
+      assert.equal(pub.body.data.data.standards.items.length, 3);
+      assert.equal(pub.body.data.data.ecosystem.items[1].href, "/dich-vu"); // mặc định khi không gửi
+
+      const none = payload();
+      none.values.items = []; // tối thiểu 1 thẻ
+      const bad = payload();
+      bad.ecosystem.items[0].href = "javascript:alert(1)";
+      for (const body of [none, bad]) {
+        const r = await admin.patch("/api/v1/content/about").send(body);
+        assert.equal(r.status, 400);
+      }
     });
 
     it("khôi phục mặc định → xoá bản đã chỉnh", async () => {

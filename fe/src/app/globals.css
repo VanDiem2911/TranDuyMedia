@@ -222,6 +222,7 @@ html.lenis body {
 .edit-canvas .reveal {
   opacity: 1 !important;
   transform: none !important;
+  clip-path: none !important; /* dải phim "Khách hàng tin tưởng" cắt mép cho tới khi hiệu ứng chạy */
 }
 .reveal[data-reveal="left"] {
   transform: translateX(-32px);

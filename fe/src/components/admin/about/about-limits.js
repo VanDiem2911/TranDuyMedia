@@ -27,6 +27,7 @@ const RULES = [
   [/^values\.items\.\d+\.desc$/, 200],
   [/^ecosystem\.eyebrow$/, 60],
   [/^ecosystem\.tagline$/, 60],
+  [/^ecosystem\.items\.\d+\.href$/, 300],
   [/^ecosystem\.items\.\d+\.name$/, 100],
   [/^ecosystem\.items\.\d+\.desc$/, 200],
 ];

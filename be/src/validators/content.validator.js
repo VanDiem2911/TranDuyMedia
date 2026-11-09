@@ -25,12 +25,17 @@ const text = (label, max) =>
 
 const image = z.object({ src: imageUrl, pos: position.default("center") });
 const list = (item, n, label) => z.array(item).length(n, `${label} phải có đúng ${n} mục`);
+/** Danh sách thẻ thêm / xoá được: từ min đến max thẻ (khớp fe/src/components/admin/about/about-lists.js) */
+const cards = (item, min, max, label) =>
+  z.array(item).min(min, `${label} cần ít nhất ${min} mục`).max(max, `${label} tối đa ${max} mục`);
 
 /** Trang "Về chúng tôi" — cùng cấu trúc với nội dung mặc định ở fe/src/lib/about.js. */
 export const aboutSchema = z.object({
   header: z.object({
     eyebrow: text("dòng nhỏ đầu trang", 60),
     description: text("mô tả đầu trang", 300),
+    // Ảnh nền đầu trang: 6 cột ảnh trôi × 3 ảnh mỗi cột
+    columns: list(list(z.object({ src: imageUrl }), 3, "Mỗi cột ảnh nền"), 6, "Ảnh nền đầu trang"),
   }),
   story: z.object({
     eyebrow: text("tiêu đề nhỏ phần câu chuyện", 60),
@@ -56,9 +61,10 @@ export const aboutSchema = z.object({
     titleLead: text("tiêu đề chuẩn mực sản xuất", 120),
     titleAccent: text("phần tiêu đề màu cam", 120),
     intro: text("câu giới thiệu chuẩn mực", 300),
-    items: list(
+    items: cards(
       z.object({ title: text("tên chuẩn mực", 80), desc: text("mô tả chuẩn mực", 300) }),
-      5,
+      1,
+      10,
       "Chuẩn mực sản xuất",
     ),
   }),
@@ -67,18 +73,31 @@ export const aboutSchema = z.object({
     titleLead: text("tiêu đề khối khách hàng tin tưởng", 80),
     titleAccent: text("phần tiêu đề màu cam", 60),
     description: text("mô tả khối khách hàng tin tưởng", 300),
-    items: list(
+    items: cards(
       z.object({ title: text("tên giá trị", 40), desc: text("mô tả giá trị", 200), image }),
-      3,
-      "Ba giá trị",
+      1,
+      6,
+      "Khối khách hàng tin tưởng",
     ),
   }),
   ecosystem: z.object({
     eyebrow: text("dòng nhỏ hệ sinh thái", 60),
     tagline: text("khẩu hiệu hệ sinh thái", 60),
-    items: list(
-      z.object({ name: text("tên dịch vụ", 100), desc: text("mô tả dịch vụ", 200), image }),
-      6,
+    items: cards(
+      z.object({
+        name: text("tên dịch vụ", 100),
+        desc: text("mô tả dịch vụ", 200),
+        // Liên kết của thẻ: trang trong website (bắt đầu bằng /) hoặc địa chỉ https
+        href: z
+          .string()
+          .trim()
+          .max(300)
+          .regex(/^(\/(?!\/)|https:\/\/)\S*$/, "Liên kết phải bắt đầu bằng / hoặc https://")
+          .default("/dich-vu"),
+        image,
+      }),
+      1,
+      12,
       "Hệ sinh thái dịch vụ",
     ),
   }),

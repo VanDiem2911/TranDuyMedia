@@ -20,6 +20,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { describeError, revalidateSite, uploadFile } from "../products/jobs";
 import { MAX_IMAGE_MB } from "../products/media-utils";
+import { LISTS } from "./about-lists";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const UPLOAD_FOLDER = "about"; // thư mục Cloudinary — backend chỉ tự dọn ảnh cũ trong thư mục này
@@ -47,6 +48,19 @@ function normalize(node) {
   return node;
 }
 
+let keySeq = 0;
+/** Gắn mã tạm cho từng thẻ trong các danh sách thêm / xoá được → so sánh "chỗ đã sửa" đúng dù xoá thẻ giữa chừng. */
+function withKeys(content) {
+  let next = content;
+  for (const path of Object.keys(LISTS))
+    next = setIn(
+      next,
+      path,
+      getIn(next, path).map((it) => ({ ...it, _k: it._k ?? `k${++keySeq}` })),
+    );
+  return next;
+}
+
 /** Cây nội dung → { "story.titleLead": "…", … } (mỗi lá một dòng) */
 function flatten(node, path = "", out = {}) {
   if (Array.isArray(node)) node.forEach((v, i) => flatten(v, path ? `${path}.${i}` : `${i}`, out));
@@ -56,14 +70,32 @@ function flatten(node, path = "", out = {}) {
   return out;
 }
 
-/** Số "chỗ đã sửa": mỗi ô chữ = 1; mỗi ảnh = 1 (đổi ảnh hay cắt ảnh đều tính chung một chỗ). */
-function countChanges(now, saved) {
-  const a = flatten(now);
-  const b = flatten(saved);
-  const sites = new Set();
-  for (const k of new Set([...Object.keys(a), ...Object.keys(b)]))
-    if (a[k] !== b[k]) sites.add(k.replace(/\.(src|pos)$/, ""));
-  return sites.size;
+/**
+ * Số "chỗ đã sửa": mỗi ô chữ = 1; mỗi ảnh = 1 (đổi ảnh hay cắt ảnh đều tính chung một chỗ);
+ * mỗi thẻ thêm mới / xoá đi = 1; thẻ còn lại so theo mã thẻ (xoá thẻ giữa chừng không làm các thẻ sau bị tính là đã sửa).
+ */
+function countChanges(a, b) {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.some((x) => x?._k) || b.some((x) => x?._k)) {
+      const old = new Map(b.map((x) => [x._k, x]));
+      const cur = new Set(a.map((x) => x._k));
+      let n = b.filter((x) => !cur.has(x._k)).length;
+      for (const x of a) n += old.has(x._k) ? countChanges(x, old.get(x._k)) : 1;
+      return n;
+    }
+    let n = Math.abs(a.length - b.length);
+    for (let i = 0; i < Math.min(a.length, b.length); i++) n += countChanges(a[i], b[i]);
+    return n;
+  }
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    if ("src" in a || "src" in b)
+      return a.src !== b.src || a.pos !== b.pos || a.alt !== b.alt ? 1 : 0;
+    let n = 0;
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)]))
+      if (k !== "_k") n += countChanges(a[k], b[k]);
+    return n;
+  }
+  return a === b ? 0 : 1;
 }
 
 const formatTime = (iso) =>
@@ -112,7 +144,7 @@ export function AboutEditor() {
     api("/content/about")
       .then((res) => {
         if (!alive) return;
-        const merged = normalize(mergeAbout(aboutDefaults, res.data?.data));
+        const merged = withKeys(normalize(mergeAbout(aboutDefaults, res.data?.data)));
         put(merged);
         setBaseline(JSON.stringify(merged));
         setHistory([]);
@@ -191,6 +223,29 @@ export function AboutEditor() {
         fileInput.current?.click();
       },
       setPosLive: (path, pos) => put(setIn(contentRef.current, `${path}.pos`, pos)),
+      listInfo: (listPath) => ({
+        len: getIn(contentRef.current, listPath).length,
+        min: LISTS[listPath].min,
+        max: LISTS[listPath].max,
+        noun: LISTS[listPath].noun,
+      }),
+      addItem: (listPath) =>
+        commit((c) => {
+          const list = getIn(c, listPath);
+          if (list.length >= LISTS[listPath].max) return c;
+          const item = { ...LISTS[listPath].template(), _k: `k${++keySeq}` };
+          return setIn(c, listPath, [...list, item]);
+        }),
+      removeItem: (listPath, index) =>
+        commit((c) => {
+          const list = getIn(c, listPath);
+          if (list.length <= LISTS[listPath].min) return c;
+          return setIn(
+            c,
+            listPath,
+            list.filter((_, i) => i !== index),
+          );
+        }),
       snapshot: () => contentRef.current,
       record: (prev) => {
         if (prev && JSON.stringify(prev) !== JSON.stringify(contentRef.current))
@@ -251,7 +306,7 @@ export function AboutEditor() {
       const res = await api("/content/about", { method: "PATCH", body: next });
       await revalidateSite(ABOUT_TAG); // website cập nhật ngay, không phải chờ cache hết hạn
 
-      const saved = normalize(mergeAbout(aboutDefaults, res.data.data));
+      const saved = withKeys(normalize(mergeAbout(aboutDefaults, res.data.data)));
       put(saved);
       setBaseline(JSON.stringify(saved));
       setHistory([]);
@@ -304,7 +359,7 @@ export function AboutEditor() {
     try {
       await api("/content/about", { method: "DELETE" });
       await revalidateSite(ABOUT_TAG);
-      const def = normalize(aboutDefaults);
+      const def = withKeys(normalize(aboutDefaults));
       put(def);
       setBaseline(JSON.stringify(def));
       setHistory([]);

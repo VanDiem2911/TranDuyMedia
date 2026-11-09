@@ -3,7 +3,14 @@
 // Cấu trúc phải khớp validator ở be/src/validators/content.validator.js.
 // Dùng được cả ở server (lib/about.js) lẫn trình duyệt (trang quản trị) — KHÔNG import gì phụ thuộc server.
 
-import { ecosystem, mission, productionStandards, profileImage, vision } from "@/data/about";
+import {
+  aboutHeaderColumns,
+  ecosystem,
+  mission,
+  productionStandards,
+  profileImage,
+  vision,
+} from "@/data/about";
 import { values } from "@/data/services";
 
 export const ABOUT_TAG = "about";
@@ -13,6 +20,8 @@ export const aboutDefaults = {
     eyebrow: "Hồ sơ doanh nghiệp",
     description:
       "Gia công video, hình ảnh thương mại quảng cáo tại TP.HCM — hơn 10 năm đồng hành cùng doanh nghiệp Việt.",
+    // Ảnh nền đầu trang: 6 cột ảnh trôi × 3 ảnh mỗi cột
+    columns: aboutHeaderColumns.map((col) => col.map((src) => ({ src }))),
   },
   story: {
     eyebrow: "Câu chuyện của chúng tôi",
@@ -62,23 +71,25 @@ export const aboutDefaults = {
     items: ecosystem.map((e) => ({
       name: e.name,
       desc: e.desc,
+      href: e.href,
       image: { src: e.src, pos: e.pos },
     })),
   },
 };
 
-/** Liên kết của từng thẻ dịch vụ — cố định (không chỉnh ở trang quản trị), theo thứ tự thẻ. */
-export const ecosystemHrefs = ecosystem.map((e) => e.href);
-
 const blank = (v) => v === undefined || v === null || (typeof v === "string" && !v.trim());
 
 /**
  * Gộp nội dung đã lưu (DB) lên nội dung mặc định: ô nào chưa có / để trống → dùng mặc định,
- * mảng gộp theo vị trí. Nhờ vậy dữ liệu cũ vẫn dùng được khi sau này thêm trường mới, và trang không bao giờ vỡ.
+ * mảng gộp theo vị trí (số phần tử theo bản đã lưu). Nhờ vậy dữ liệu cũ vẫn dùng được khi sau này thêm trường mới, và trang không bao giờ vỡ.
  */
 export function mergeAbout(def, saved) {
   if (Array.isArray(def)) {
-    return def.map((d, i) => mergeAbout(d, Array.isArray(saved) ? saved[i] : undefined));
+    // Danh sách thẻ đã lưu (thêm / xoá thẻ) → số thẻ theo bản đã lưu; chưa lưu gì → theo mặc định
+    const list = Array.isArray(saved) && saved.length ? saved : def;
+    return list.map((s, i) =>
+      def[i] !== undefined ? mergeAbout(def[i], list === def ? undefined : s) : s,
+    );
   }
   if (def && typeof def === "object") {
     const s = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};

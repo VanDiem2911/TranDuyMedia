@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { ImageTools } from "@/components/admin/about/inline-edit";
+import {
+  AddTile,
+  BannerTools,
+  ImageTools,
+  RemoveButton,
+} from "@/components/admin/about/inline-edit";
 import { LoopCarousel, ZoomGroup, ZoomImage } from "@/components/gallery";
 import { NoOrphan, Pic, T, Title } from "@/components/about/edit-kit";
 import { PageHeader, Values } from "@/components/sections";
 import { Button, Container, SectionHeading } from "@/components/ui";
-import { aboutHeaderColumns } from "@/data/about";
-import { ecosystemHrefs } from "@/data/about-content";
 import { cn, pad } from "@/lib/utils";
 
 /**
@@ -17,13 +20,20 @@ import { cn, pad } from "@/lib/utils";
 
 /* ── Đầu trang ── */
 export function AboutHeader({ header, edit }) {
-  return (
+  const banner = (
     <PageHeader
       title="Về chúng tôi"
       eyebrow={<T edit={edit} path="header.eyebrow" value={header.eyebrow} />}
       description={<T edit={edit} path="header.description" value={header.description} />}
-      columns={aboutHeaderColumns}
+      columns={header.columns}
     />
+  );
+  if (!edit) return banner;
+  return (
+    <div className="relative">
+      {banner}
+      <BannerTools edit={edit} columns={header.columns} />
+    </div>
   );
 }
 
@@ -252,7 +262,7 @@ export function Standards({ standards, edit }) {
             {standards.items.map((v, i) => (
               <li
                 key={i}
-                className="reveal group grid grid-cols-[3.5rem_1fr] gap-4 py-5 sm:grid-cols-[5rem_1fr] sm:gap-8 sm:py-6"
+                className="reveal group relative grid grid-cols-[3.5rem_1fr] gap-4 py-5 sm:grid-cols-[5rem_1fr] sm:gap-8 sm:py-6"
                 style={{ "--reveal-delay": `${(i % 2) * 80}ms` }}
               >
                 <span className="text-3xl h-display text-paper-200 transition-colors duration-500 group-hover:text-orange-500 sm:text-5xl">
@@ -266,8 +276,14 @@ export function Standards({ standards, edit }) {
                     <T edit={edit} path={`standards.items.${i}.desc`} value={v.desc} />
                   </p>
                 </div>
+                {edit && <RemoveButton edit={edit} listPath="standards.items" index={i} />}
               </li>
             ))}
+            {edit && (
+              <li className="py-5">
+                <AddTile edit={edit} listPath="standards.items" label="Thêm nguyên tắc" />
+              </li>
+            )}
           </ol>
         </div>
       </Container>
@@ -321,7 +337,15 @@ function EcoCard({ e, i, edit }) {
           <T edit={edit} path={`ecosystem.items.${i}.desc`} value={e.desc} />
         </p>
       </div>
-      {edit && <ImageTools edit={edit} path={`ecosystem.items.${i}.image`} />}
+      {edit && (
+        <ImageTools
+          edit={edit}
+          path={`ecosystem.items.${i}.image`}
+          hrefPath={`ecosystem.items.${i}.href`}
+          listPath="ecosystem.items"
+          index={i}
+        />
+      )}
     </div>
   );
 }
@@ -380,6 +404,12 @@ export function Ecosystem({ ecosystem, edit }) {
                   <EcoCard e={e} i={i} edit={edit} />
                 </div>
               ))}
+              <AddTile
+                edit={edit}
+                listPath="ecosystem.items"
+                label="Thêm thẻ dịch vụ"
+                className="aspect-4/5 rounded-2xl border-white/25 text-white/80 hover:border-orange-500 hover:text-white"
+              />
             </div>
           ) : (
             <LoopCarousel
@@ -388,7 +418,7 @@ export function Ecosystem({ ecosystem, edit }) {
               itemClassName="w-[100cqw] sm:w-[calc((100cqw-1rem)/2)] lg:w-[calc((100cqw-2.5rem)/3)]"
             >
               {ecosystem.items.map((e, i) => (
-                <Link key={i} href={ecosystemHrefs[i]} draggable={false} className="group block">
+                <Link key={i} href={e.href} draggable={false} className="group block">
                   <EcoCard e={e} i={i} />
                 </Link>
               ))}

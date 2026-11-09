@@ -1,4 +1,4 @@
-import { ImageTools } from "@/components/admin/about/inline-edit";
+import { AddTile, ImageTools } from "@/components/admin/about/inline-edit";
 import { Pic, T } from "@/components/about/edit-kit";
 import { Container } from "@/components/ui";
 import { values } from "@/data/services";
@@ -102,9 +102,26 @@ export function Values({
                     <T edit={edit} path={`values.items.${i}.desc`} value={v.desc} />
                   </p>
                 </div>
-                {edit && <ImageTools edit={edit} path={`values.items.${i}.image`} />}
+                {edit && (
+                  <ImageTools
+                    edit={edit}
+                    path={`values.items.${i}.image`}
+                    listPath="values.items"
+                    index={i}
+                  />
+                )}
               </li>
             ))}
+            {edit && (
+              <li className="aspect-4/3 md:aspect-16/10">
+                <AddTile
+                  edit={edit}
+                  listPath="values.items"
+                  label="Thêm thẻ"
+                  className="h-full rounded-md border-white/25 text-white/80 hover:border-orange-500 hover:text-white"
+                />
+              </li>
+            )}
           </ul>
           <div aria-hidden="true" className="h-6 sprockets" />
         </div>
