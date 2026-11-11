@@ -13,8 +13,6 @@ import {
 } from "@/data/about";
 import { values } from "@/data/services";
 
-export const ABOUT_TAG = "about";
-
 export const aboutDefaults = {
   header: {
     eyebrow: "Hồ sơ doanh nghiệp",
@@ -78,24 +76,3 @@ export const aboutDefaults = {
     })),
   },
 };
-
-const blank = (v) => v === undefined || v === null || (typeof v === "string" && !v.trim());
-
-/**
- * Gộp nội dung đã lưu (DB) lên nội dung mặc định: ô nào chưa có / để trống → dùng mặc định,
- * mảng gộp theo vị trí (số phần tử theo bản đã lưu). Nhờ vậy dữ liệu cũ vẫn dùng được khi sau này thêm trường mới, và trang không bao giờ vỡ.
- */
-export function mergeAbout(def, saved) {
-  if (Array.isArray(def)) {
-    // Danh sách thẻ đã lưu (thêm / xoá thẻ) → số thẻ theo bản đã lưu; chưa lưu gì → theo mặc định
-    const list = Array.isArray(saved) && saved.length ? saved : def;
-    return list.map((s, i) =>
-      def[i] !== undefined ? mergeAbout(def[i], list === def ? undefined : s) : s,
-    );
-  }
-  if (def && typeof def === "object") {
-    const s = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
-    return Object.fromEntries(Object.entries(def).map(([k, v]) => [k, mergeAbout(v, s[k])]));
-  }
-  return blank(saved) ? def : saved;
-}

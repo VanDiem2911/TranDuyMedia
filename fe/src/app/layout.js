@@ -3,6 +3,8 @@ import { INTRO_SKIP_SCRIPT } from "@/components/fx/intro-skip";
 import { Toaster } from "@/components/ui/Toaster";
 import { UploadResumer } from "@/components/admin/products/UploadResumer";
 import { siteConfig } from "@/config/site";
+import { siteView } from "@/data/site-content";
+import { getSiteContent } from "@/lib/site";
 import "./globals.css";
 
 const sans = Be_Vietnam_Pro({
@@ -57,29 +59,31 @@ export const viewport = {
 };
 
 // Dữ liệu có cấu trúc cho Google (LocalBusiness)
-const jsonLd = {
+const buildJsonLd = ({ contact, socials }) => ({
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   name: siteConfig.name,
   description: siteConfig.description,
   url: siteConfig.url,
-  telephone: "+84" + siteConfig.contact.phoneRaw.slice(1),
-  email: siteConfig.contact.email,
+  telephone: "+84" + contact.phoneRaw.replace(/^0/, ""),
+  email: contact.email,
   image: `${siteConfig.url}/images/og-image.png`,
   logo: `${siteConfig.url}/images/brand/logo.webp`,
   address: {
     "@type": "PostalAddress",
-    streetAddress: siteConfig.contact.address,
+    streetAddress: contact.address,
     addressLocality: "Nhà Bè",
-    addressRegion: siteConfig.contact.city,
+    addressRegion: contact.city,
     addressCountry: "VN",
   },
-  hasMap: siteConfig.contact.mapsLink,
-  sameAs: [siteConfig.socials.facebook, siteConfig.socials.youtube, siteConfig.socials.tiktok],
+  hasMap: contact.mapsLink,
+  sameAs: [socials.facebook, socials.youtube, socials.tiktok],
   priceRange: "$$",
-};
+});
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // Liên hệ chỉnh ở trang quản trị (DB) — cache theo thẻ
+  const jsonLd = buildJsonLd(siteView(await getSiteContent()));
   return (
     // suppressHydrationWarning: màn chào (IntroSplash) gắn data-intro lên <html> trước khi React hydrate
     <html lang={siteConfig.lang} className={sans.variable} suppressHydrationWarning>

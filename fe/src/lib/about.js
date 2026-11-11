@@ -1,34 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
-import { ABOUT_TAG, aboutDefaults, mergeAbout } from "@/data/about-content";
+import { getPageContent } from "@/lib/page-content";
 
-/**
- * Nội dung trang "Về chúng tôi" — lấy từ backend (MongoDB), chỉ dùng phía server.
- * Cùng cơ chế với sản phẩm (lib/products.js): kết quả cache theo tag "about"; trang quản trị gọi /api/revalidate
- * ngay sau khi lưu → khách thấy nội dung mới ngay, còn lại luôn phục vụ từ bộ nhớ đệm nên rất nhanh.
- * Backend lỗi / chưa có dữ liệu → dùng nội dung mặc định, không làm sập trang.
- */
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:4000";
-
-// Lỗi kết nối (backend đang ngủ / chưa chạy lúc build…) KHÔNG được làm hỏng bản build: ném lỗi ra ngoài hàm
-// "use cache" sẽ làm Next dừng cả quá trình build. Nên bắt lỗi ngay trong hàm, trả nội dung mặc định và chỉ cache
-// rất ngắn (1 phút) để trang tự lấy lại nội dung thật khi backend sẵn sàng; thành công thì cache dài như thường.
-async function cachedAbout() {
-  "use cache";
-  cacheTag(ABOUT_TAG);
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/v1/content/about`, {
-      headers: { accept: "application/json" },
-      cache: "no-store", // bộ nhớ đệm do "use cache" + cacheTag quản lý, không để fetch-cache lưu thêm một lớp
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) throw new Error(`Backend ${res.status}`);
-    const merged = mergeAbout(aboutDefaults, (await res.json()).data?.data);
-    cacheLife("hours");
-    return merged;
-  } catch {
-    cacheLife({ stale: 60, revalidate: 60, expire: 3600 });
-    return aboutDefaults;
-  }
-}
-
-export const getAbout = cachedAbout;
+/** Nội dung trang "Về chúng tôi" (xem lib/page-content.js). */
+export const getAbout = () => getPageContent("about");

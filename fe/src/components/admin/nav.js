@@ -14,6 +14,36 @@ export const adminNav = [
     desc: "Bộ ảnh và video đã thực hiện",
   },
   {
+    href: "/admin/products-header",
+    label: "Trang Sản phẩm",
+    icon: "image",
+    desc: "Chỉnh phần đầu trang Sản phẩm (chữ và ảnh nền)",
+  },
+  {
+    href: "/admin/site",
+    label: "Chân trang, menu & SEO",
+    icon: "phone",
+    desc: "Chỉnh chân trang, liên hệ, nhãn menu, tiêu đề & mô tả trên Google",
+  },
+  {
+    href: "/admin/home",
+    label: "Trang chủ",
+    icon: "home",
+    desc: "Chỉnh nội dung và hình ảnh của Trang chủ",
+  },
+  {
+    href: "/admin/services",
+    label: "Dịch vụ",
+    icon: "camera",
+    desc: "Chỉnh nội dung và hình ảnh của trang Dịch vụ",
+  },
+  {
+    href: "/admin/service-detail",
+    label: "Chi tiết dịch vụ",
+    icon: "studio",
+    desc: "Chỉnh nội dung 5 trang chi tiết dịch vụ",
+  },
+  {
     href: "/admin/about",
     label: "Về chúng tôi",
     icon: "note",

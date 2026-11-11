@@ -1,20 +1,21 @@
 import { siteContentService } from "#services/site-content.service.js";
 import { ok } from "#utils/response.js";
 
-const ABOUT = "about";
-
-/** TẦNG CONTROLLER — nội dung trang tĩnh (hiện chỉ có trang Về chúng tôi). */
+/** TẦNG CONTROLLER — nội dung các trang chỉnh được từ trang quản trị (key = about | home | services | site | products). */
 export const contentController = {
-  async getAbout(_req, res) {
-    ok(res, await siteContentService.get(ABOUT));
+  async get(req, res) {
+    ok(res, await siteContentService.get(req.validated.params.key));
   },
 
-  async saveAbout(req, res) {
-    ok(res, await siteContentService.save(ABOUT, req.validated.body, req.user.id));
+  async save(req, res) {
+    ok(
+      res,
+      await siteContentService.save(req.validated.params.key, req.validated.body, req.user.id),
+    );
   },
 
-  async resetAbout(_req, res) {
-    await siteContentService.reset(ABOUT);
+  async reset(req, res) {
+    await siteContentService.reset(req.validated.params.key);
     res.status(204).end();
   },
 };

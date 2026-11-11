@@ -5,8 +5,8 @@ import { siteConfig } from "@/config/site";
  * - Màn hình ≥ 768px → 1080p.
  * - Điện thoại, hoặc người dùng bật "tiết kiệm dữ liệu" → 720p.
  */
-export function pickShowreelSrc() {
-  const { hd, sd } = siteConfig.showreel;
+export function pickShowreelSrc(showreel = siteConfig.showreel) {
+  const { hd, sd } = showreel;
   const saveData = navigator.connection?.saveData;
   const wide = window.matchMedia("(min-width: 768px)").matches;
   return wide && !saveData ? hd : sd;

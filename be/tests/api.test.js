@@ -717,6 +717,32 @@ describe("API v1", () => {
       assert.equal(pub.body.data.data.header.banner.mode, "video");
     });
 
+    it("các trang khác (home, services, site, products): lưu cây nội dung có giới hạn", async () => {
+      const tree = {
+        hero: { title: "Tiêu đề", slides: [{ src: "/images/a.webp", pos: "50% 50%", alt: "A" }] },
+        steps: [{ title: "Một", desc: "Mô tả" }],
+      };
+      for (const key of ["home", "services", "site", "products"]) {
+        assert.equal((await admin.patch(`/api/v1/content/${key}`).send(tree)).status, 200, key);
+        const pub = await withCsrf(request(app)).get(`/api/v1/content/${key}`);
+        assert.equal(pub.body.data.data.hero.title, "Tiêu đề");
+      }
+      // chưa đăng nhập → 401; trang không tồn tại → 400; địa chỉ không an toàn → 400
+      assert.equal(
+        (await withCsrf(request(app)).patch("/api/v1/content/home").send(tree)).status,
+        401,
+      );
+      assert.equal((await admin.patch("/api/v1/content/khong-co").send(tree)).status, 400);
+      const bad = { hero: { slides: [{ src: "javascript:alert(1)" }] } };
+      const r = await admin.patch("/api/v1/content/home").send(bad);
+      assert.equal(r.status, 400);
+      assert.ok(r.body.error.details.some((d) => d.field === "hero.slides.0.src"));
+      const deep = { a: { b: { c: { d: { e: { f: { g: { h: { i: { j: 1 } } } } } } } } } };
+      assert.equal((await admin.patch("/api/v1/content/home").send(deep)).status, 400);
+      for (const key of ["home", "services", "site", "products"])
+        assert.equal((await admin.delete(`/api/v1/content/${key}`)).status, 204);
+    });
+
     it("khôi phục mặc định → xoá bản đã chỉnh", async () => {
       assert.equal((await admin.delete("/api/v1/content/about")).status, 204);
       const pub = await withCsrf(request(app)).get("/api/v1/content/about");

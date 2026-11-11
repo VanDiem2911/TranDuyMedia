@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { DateField } from "@/components/ui/DateField";
-import { siteConfig } from "@/config/site";
+import { useSiteView } from "@/components/layout/SiteProvider";
 import { BUDGETS } from "@/data/bookings";
 import { services } from "@/data/services";
 import { api } from "@/lib/api";
@@ -15,7 +15,7 @@ const EMPTY = { name: "", phone: "", service: "", date: "", budget: "", note: ""
 const RULES = { name: validateName, phone: validatePhone };
 
 /** Lỗi từ backend → nội dung toast thân thiện (+ lỗi theo từng ô nếu có). */
-function describe(err) {
+function describe(err, phone) {
   if (err.code === "VALIDATION_ERROR") {
     const fields = Object.fromEntries((err.details ?? []).map((d) => [d.field, d.message]));
     return {
@@ -40,7 +40,7 @@ function describe(err) {
   }
   return {
     title: "Chưa gửi được yêu cầu",
-    message: `Vui lòng thử lại hoặc gọi ${siteConfig.contact.phone}.`,
+    message: `Vui lòng thử lại hoặc gọi ${phone}.`,
   };
 }
 
@@ -54,6 +54,7 @@ function describe(err) {
 const SERVICE_SLUGS = new Set(services.map((s) => s.slug));
 
 export function BookingForm({ preset: rawPreset = "", note: presetNote = "", compact = false }) {
+  const site = useSiteView();
   // data-booking không kèm giá trị (vd. data-booking="true") → không chọn sẵn dịch vụ nào
   const preset = SERVICE_SLUGS.has(rawPreset) ? rawPreset : "";
   const [form, setForm] = useState({ ...EMPTY, service: preset, note: presetNote });
@@ -92,7 +93,7 @@ export function BookingForm({ preset: rawPreset = "", note: presetNote = "", com
         title: "Đã gửi yêu cầu",
       });
     } catch (err) {
-      const d = describe(err);
+      const d = describe(err, site.contact.phone);
       if (d.fields) setErrors(d.fields);
       toast[d.type ?? "error"](d.message, { title: d.title });
     } finally {

@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { SmartImage as Image } from "@/components/ui/SmartImage";
 import { Icon } from "@/components/icons";
+import { useSiteView } from "@/components/layout/SiteProvider";
 import { Logo } from "@/components/ui";
-import { siteConfig } from "@/config/site";
 import { lockScroll } from "@/lib/utils";
 import { BookingForm } from "./BookingForm";
 
@@ -20,6 +20,7 @@ const bullets = [
  * data-booking-note (tuỳ chọn) = nội dung điền sẵn ô mô tả.
  */
 export function BookingModal() {
+  const site = useSiteView();
   const [open, setOpen] = useState(false);
   const [preset, setPreset] = useState("");
   const [note, setNote] = useState(""); // nội dung điền sẵn ô mô tả (data-booking-note)
@@ -53,9 +54,9 @@ export function BookingModal() {
   if (!open) return null;
 
   const quick = [
-    { href: siteConfig.socials.messenger, label: "Messenger", icon: "messenger", ext: true },
-    { href: siteConfig.socials.zalo, label: "Zalo", icon: "zalo", ext: true },
-    { href: siteConfig.contact.phoneHref, label: siteConfig.contact.phone, icon: "phone" },
+    { href: site.socials.messenger, label: "Messenger", icon: "messenger", ext: true },
+    { href: site.socials.zalo, label: "Zalo", icon: "zalo", ext: true },
+    { href: site.contact.phoneHref, label: site.contact.phone, icon: "phone" },
   ];
 
   return (

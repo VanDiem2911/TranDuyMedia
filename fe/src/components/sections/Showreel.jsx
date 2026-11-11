@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
+import { T } from "@/components/about/edit-kit";
 import { Container } from "@/components/ui";
-import { siteConfig } from "@/config/site";
+import { useShowreel } from "@/components/booking/ShowreelProvider";
 import { pickShowreelSrc } from "@/lib/showreel";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +23,29 @@ export function Showreel({
   title = "Đồng hành lan tỏa giá trị cùng doanh nghiệp.",
   description = "Tổng hợp các dự án video marketing, iTVC, doanh nghiệp và sự kiện trong năm 2025 – 2026.",
   className,
+  edit, // chỉ trang quản trị truyền vào: chữ sửa trực tiếp
+  textPath = "showreel", // tiền tố đường dẫn nội dung của 3 ô chữ (eyebrow, title, description)
+  media, // trang quản trị truyền video đang sửa; website lấy từ ShowreelProvider
 }) {
-  const { showreel } = siteConfig;
+  const fromSite = useShowreel();
+  const showreel = media ?? fromSite;
+  const showreelRef = useRef(showreel);
+  useEffect(() => {
+    showreelRef.current = showreel;
+  });
   const videoRef = useRef(null);
   const userPausedRef = useRef(false);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
+
+  // Video đổi (trang quản trị chọn video mới) → nạp lại nguồn mới
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !video.getAttribute("src")) return;
+    video.setAttribute("src", pickShowreelSrc(showreel));
+    video.load();
+    video.play().catch(() => {});
+  }, [showreel]);
 
   // Chọn nguồn sau khi mount (server không biết kích thước màn hình) và tự phát/dừng theo vị trí cuộn
   useEffect(() => {
@@ -36,7 +54,8 @@ export function Showreel({
     // Gắn nguồn trực tiếp (không qua state) → luôn có nguồn TRƯỚC khi play(); nếu gắn sau, trình duyệt
     // huỷ lệnh play đang chờ và video đứng im (xảy ra khi tải lại trang ngay tại section này).
     const ensureSrc = () => {
-      if (!video.getAttribute("src")) video.setAttribute("src", pickShowreelSrc());
+      if (!video.getAttribute("src"))
+        video.setAttribute("src", pickShowreelSrc(showreelRef.current));
     };
 
     // Gắn nguồn khi khung còn cách màn hình ~1 màn hình → kịp tải trước, không tải nếu khách không cuộn tới
@@ -101,14 +120,16 @@ export function Showreel({
       data-nav-theme="light"
     >
       <Container>
-        <p className="reveal mb-4 eyebrow">{eyebrow}</p>
+        <p className="reveal mb-4 eyebrow">
+          <T edit={edit} path={`${textPath}.eyebrow`} value={eyebrow} />
+        </p>
         {/* Mô tả canh giữa theo chiều cao tiêu đề (eyebrow nằm ngoài hàng để không lệch tâm) */}
         <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <h2
             className="reveal max-w-2xl h-section text-balance"
             style={{ "--reveal-delay": "80ms" }}
           >
-            {title}
+            <T edit={edit} path={`${textPath}.title`} value={title} />
           </h2>
           <p
             // translate-y nhẹ: tâm hộp chữ tiêu đề lớn cao hơn tâm NHÌN (khoảng trống chừa dấu tiếng Việt ở trên)
@@ -116,7 +137,7 @@ export function Showreel({
             className="reveal max-w-sm text-sm leading-relaxed text-ink-soft sm:translate-y-1.5 sm:text-base"
             style={{ "--reveal-delay": "160ms" }}
           >
-            {description}
+            <T edit={edit} path={`${textPath}.description`} value={description} />
           </p>
         </div>
 
@@ -176,6 +197,29 @@ export function Showreel({
               </span>
             </span>
           </button>
+
+          {edit && (
+            // Trang quản trị: đổi video showreel (dùng chung ở trang chủ, Về chúng tôi và popup xem toàn màn hình)
+            <div className="absolute top-3 right-3 z-20 flex gap-2">
+              <button
+                type="button"
+                onClick={() => edit.pickVideo("showreel.video")}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-ink shadow-lg ring-1 ring-ink/10 hover:bg-paper"
+              >
+                <Icon name="play" className="size-3.5" />
+                Đổi video showreel
+              </button>
+              {edit.get("showreel.video.src") && (
+                <button
+                  type="button"
+                  onClick={() => edit.setText("showreel.video", { src: "", poster: "" })}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-ink shadow-lg ring-1 ring-ink/10 hover:bg-paper"
+                >
+                  Dùng video mặc định
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Điều khiển góc phải dưới (nằm trên lớp bấm, không mở popup) */}
           <div className="absolute right-4 bottom-5 z-10 flex items-center gap-2 sm:right-6 sm:bottom-6">

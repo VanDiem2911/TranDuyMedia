@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
-import { siteConfig } from "@/config/site";
+import { useShowreel } from "./ShowreelProvider";
 import { inlineShowreel, pickShowreelSrc } from "@/lib/showreel";
 import { lockScroll } from "@/lib/utils";
 
@@ -15,6 +15,11 @@ import { lockScroll } from "@/lib/utils";
  * → popup phát bằng trình phát nhúng của Drive.
  */
 export function VideoModal() {
+  const showreel = useShowreel();
+  const showreelRef = useRef(showreel);
+  useEffect(() => {
+    showreelRef.current = showreel;
+  });
   const [state, setState] = useState(null); // { src, startAt } | { embed, title, vertical }
   const resumeInlineRef = useRef(false); // video trong trang đang chạy lúc mở popup → chạy tiếp khi đóng
 
@@ -52,7 +57,7 @@ export function VideoModal() {
       resumeInlineRef.current = !!inline && !inline.paused;
       inline?.pause();
       setState({
-        src: pickShowreelSrc(),
+        src: pickShowreelSrc(showreelRef.current),
         startAt: inline && inline.currentTime > 1 ? inline.currentTime : 0,
       });
     };
@@ -72,7 +77,6 @@ export function VideoModal() {
   }, [state, close]);
 
   if (!state) return null;
-  const { showreel } = siteConfig;
 
   return (
     <div

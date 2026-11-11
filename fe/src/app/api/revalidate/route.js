@@ -1,9 +1,9 @@
 import { revalidateTag } from "next/cache";
-import { ABOUT_TAG } from "@/data/about-content";
+import { PAGE_TAGS } from "@/data/page-registry";
 import { PRODUCTS_TAG } from "@/lib/products";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:4000";
-const ALLOWED = new Set([PRODUCTS_TAG, ABOUT_TAG]);
+const ALLOWED = new Set([PRODUCTS_TAG, ...PAGE_TAGS]);
 
 /**
  * Làm mới dữ liệu website ngay sau khi quản trị viên thay đổi nội dung.

@@ -7,7 +7,7 @@ import { subscribeScroll } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 
 // Cụm nút chat nhanh: Messenger / Zalo / Gọi — hiện sau khi cuộn qua nửa hero.
-export function FloatingContact() {
+export function FloatingContact({ site = siteConfig }) {
   const [show, setShow] = useState(false);
 
   // Kênh scroll chung (đồng bộ Lenis); chỉ setState khi trạng thái thực sự đổi
@@ -21,14 +21,14 @@ export function FloatingContact() {
 
   const items = [
     {
-      href: siteConfig.socials.messenger,
+      href: site.socials.messenger,
       label: "Chat Messenger",
       icon: "messenger",
       cls: "bg-[linear-gradient(135deg,#00B2FF_0%,#006AFF_100%)]",
       iconCls: "size-[22px]",
     },
     {
-      href: siteConfig.socials.zalo,
+      href: site.socials.zalo,
       label: "Chat Zalo",
       // Widget chuẩn Zalo: nút tròn xanh #0068FF, chữ "Zalo" trắng ở giữa
       icon: "zaloText",
@@ -36,8 +36,8 @@ export function FloatingContact() {
       iconCls: "h-[11px] w-[30px]",
     },
     {
-      href: siteConfig.contact.phoneHref,
-      label: `Gọi ${siteConfig.contact.phone}`,
+      href: site.contact.phoneHref,
+      label: `Gọi ${site.contact.phone}`,
       icon: "phone",
       cls: "bg-orange-500",
       iconCls: "size-5",

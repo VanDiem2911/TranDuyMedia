@@ -4,12 +4,28 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { BentoGallery } from "@/components/gallery";
-import { ClipGrid, Journey, Pricing, ServiceVideoHero, StudioRooms } from "@/components/services";
+import {
+  ClipGrid,
+  Journey,
+  Pricing,
+  ServiceFeatures,
+  ServiceOverview,
+  ServiceVideoHero,
+  ServiceWorks,
+  StudioRooms,
+} from "@/components/services";
 import { Button, Container } from "@/components/ui";
 import { BehindScenes, PageHeader, Partners, Values } from "@/components/sections";
 import { siteConfig } from "@/config/site";
 import { getService, services } from "@/data/services";
+import { applyServiceDetail } from "@/data/service-detail-content";
 import { createMetadata } from "@/lib/metadata";
+import { siteView } from "@/data/site-content";
+import { getAbout } from "@/lib/about";
+import { getHome } from "@/lib/home";
+import { getServiceDetail } from "@/lib/service-detail";
+import { getServicesPage } from "@/lib/services";
+import { getSiteContent } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function generateStaticParams() {
@@ -53,8 +69,28 @@ export default function ServicePage({ params }) {
 
 async function ServiceView({ params }) {
   const { slug } = await params;
-  const s = getService(slug);
-  if (!s) notFound();
+  const base = getService(slug);
+  if (!base) notFound();
+  // Nội dung chỉnh ở trang quản trị (DB) gộp lên dữ liệu gốc — cache theo thẻ, lưu xong là cập nhật ngay
+  // Các khối dùng chung (3 thế mạnh, đối tác, hành trình, hậu trường) lấy nội dung chỉnh ở Về chúng tôi / Trang chủ / Dịch vụ
+  const [detail, about, home, list, site] = await Promise.all([
+    getServiceDetail(),
+    getAbout(),
+    getHome(),
+    getServicesPage(),
+    getSiteContent(),
+  ]);
+  const view = siteView(site);
+  const strengths = about.values.items.map((v) => ({
+    title: v.title,
+    desc: v.desc,
+    image: v.image.src,
+    imagePos: v.image.pos,
+  }));
+  const s = applyServiceDetail(
+    base,
+    detail.items.find((d) => d.slug === slug),
+  );
 
   const others = services.filter((x) => x.slug !== slug);
   const studio = s.kind === "studio";
@@ -91,40 +127,45 @@ async function ServiceView({ params }) {
       {studio ? (
         <>
           {/* Giới thiệu + 4 điểm nổi bật: cùng nền, liền mạch như một khối */}
-          <Overview s={s} className="bg-paper" flush />
-          <Features s={s} />
+          <ServiceOverview s={s} className="bg-paper" flush />
+          <ServiceFeatures s={s} />
           <StudioRooms rooms={s.rooms} slug={s.slug} />
           <Pricing
             slug={s.slug}
             plans={s.pricing.plans}
-            title="Bảng giá thuê studio."
+            title={s.pricingTitle}
             className="bg-white"
-            note="Tính theo giờ và theo room, tối thiểu 2 giờ — đã gồm đèn, phông nền, đạo cụ sẵn có. Xác nhận lịch và gửi bảng giá chi tiết trong ngày."
+            note={s.pricingNote}
           />
-          <BehindScenes id="hau-truong-studio" />
-          <StudioLinks s={s} />
+          <BehindScenes id="hau-truong-studio" content={home.bts} />
+          <StudioLinks s={s} contact={view.contact} />
         </>
       ) : (
         <>
           {/* 2 — Giới thiệu dịch vụ (riêng) */}
-          <Overview s={s} className="bg-white" />
+          <ServiceOverview s={s} className="bg-white" />
           {/* 3 — 3 thế mạnh (dùng chung) */}
-          <Values eyebrow="3 thế mạnh của Trần Duy Media" />
+          <Values
+            eyebrow="3 thế mạnh của Trần Duy Media"
+            titleLead={about.values.titleLead}
+            titleAccent={about.values.titleAccent}
+            items={strengths}
+          />
           {/* 4 — Sản phẩm thực tế (riêng) */}
-          <Works s={s} />
+          <ServiceWorks s={s} />
           {/* 5 — Đối tác khách hàng (dùng chung) */}
-          <Partners />
+          <Partners content={home.partners} />
           {/* 6 — Quy trình làm việc (dùng chung) */}
-          <Journey />
+          <Journey content={list.journey} />
           {/* 7 — Báo giá (riêng) */}
           <Pricing
             slug={s.slug}
             plans={s.pricing.plans}
-            // Chỉ viết thường CHỮ ĐẦU (đứng sau "Báo giá") — giữ nguyên chữ hoa có chủ đích: "iTVC, Viral"
-            title={`Báo giá ${s.title.charAt(0).toLowerCase()}${s.title.slice(1)}.`}
+            title={s.pricingTitle}
+            note={s.pricingNote}
           />
           {/* 8 — Hậu trường (dùng chung) */}
-          <BehindScenes id="hau-truong-dich-vu" />
+          <BehindScenes id="hau-truong-dich-vu" content={home.bts} />
         </>
       )}
 
@@ -186,208 +227,11 @@ async function ServiceView({ params }) {
   );
 }
 
-/** Tiêu đề có vế nhấn màu cam; giữ liền các cụm từ ghép (không tách 2 dòng). */
-const KEEP = [
-  "Sản xuất",
-  "video short",
-  "doanh nghiệp,",
-  "sự kiện.",
-  "Chụp ảnh",
-  "quảng cáo.",
-  "Cho thuê",
-  "bối cảnh.",
-];
-function Accent({ text, accent }) {
-  const i = accent ? text.indexOf(accent) : -1;
-  const keep = (str) => {
-    // Bọc các cụm từ ghép bằng span không ngắt dòng
-    const parts = [];
-    let rest = str;
-    while (rest) {
-      let hit = null;
-      for (const k of KEEP) {
-        const j = rest.indexOf(k);
-        if (j >= 0 && (!hit || j < hit.j)) hit = { j, k };
-      }
-      if (!hit) {
-        parts.push(rest);
-        break;
-      }
-      if (hit.j) parts.push(rest.slice(0, hit.j));
-      parts.push(
-        <span key={parts.length} className="whitespace-nowrap">
-          {hit.k}
-        </span>,
-      );
-      rest = rest.slice(hit.j + hit.k.length);
-    }
-    return parts;
-  };
-  if (i < 0) return keep(text);
-  return (
-    <>
-      {keep(text.slice(0, i))}
-      <span className="text-orange-500">{keep(accent)}</span>
-    </>
-  );
-}
-
-/* ── Giới thiệu dịch vụ: tiêu đề nêu tên dịch vụ + mô tả + 3 số liệu | cụm 3 ảnh ── */
-// flush: bỏ khoảng đệm dưới để nối liền khối ngay sau (trang Cho thuê studio)
-function Overview({ s, className, flush = false }) {
-  return (
-    <section
-      className={cn(flush ? "pt-16 pb-14 sm:pt-20 sm:pb-16 lg:pt-24" : "section-y", className)}
-      data-nav-theme="light"
-    >
-      <Container>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-          <div>
-            <p className="reveal mb-4 eyebrow">Giới thiệu dịch vụ</p>
-            <h2 className="reveal h-section text-balance" style={{ "--reveal-delay": "80ms" }}>
-              <Accent text={s.headline} accent={s.accent} />
-            </h2>
-            <p
-              className="reveal mt-5 text-base leading-relaxed text-ink-soft sm:text-lg"
-              style={{ "--reveal-delay": "160ms" }}
-            >
-              {s.description}
-            </p>
-            <dl
-              className="reveal mt-8 grid max-w-lg grid-cols-3 gap-6 border-y border-ink/10 py-6"
-              style={{ "--reveal-delay": "200ms" }}
-            >
-              {s.highlights.map((h) => (
-                <div key={h.label} className="@container min-w-0">
-                  {/* Cỡ chữ theo bề rộng cột (container query) → giá trị dài vẫn 1 dòng, không tràn */}
-                  <dd className="text-[clamp(0.9rem,16.5cqi,1.875rem)] h-display whitespace-nowrap text-navy-900">
-                    {h.value}
-                  </dd>
-                  <dt className="mt-1 text-xs text-ink-muted">{h.label}</dt>
-                </div>
-              ))}
-            </dl>
-            <div
-              className="reveal btn-row mt-8 flex flex-wrap gap-3"
-              style={{ "--reveal-delay": "260ms" }}
-            >
-              <Button pill data-booking={s.slug}>
-                Liên hệ tư vấn
-              </Button>
-              <Button href="#bao-gia" variant="outline">
-                Xem báo giá
-              </Button>
-            </div>
-          </div>
-
-          {/* Cụm ảnh: 1 ảnh cao + 2 ảnh */}
-          <div className="relative grid h-[420px] grid-cols-[1.15fr_1fr] grid-rows-2 gap-4 sm:h-[520px]">
-            {[0, 1, 2].map((k) => {
-              // phần tử pool: đường dẫn ảnh, hoặc { src, pos } khi cần vị trí cắt riêng
-              const p = s.pool[k];
-              const src = typeof p === "string" ? p : p.src;
-              return (
-                <div
-                  key={src}
-                  className={cn(
-                    "reveal relative overflow-hidden rounded-3xl bg-paper-200 shadow-card",
-                    k === 0 && "row-span-2 shadow-soft",
-                  )}
-                  data-reveal="scale"
-                  style={{ "--reveal-delay": `${k * 120}ms` }}
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 25vw, 50vw"
-                    className="object-cover transition-transform duration-[1400ms] hover:scale-105"
-                    style={{ objectPosition: typeof p === "string" ? "center" : p.pos }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </Container>
-    </section>
-  );
-}
-
-/* ── Sản phẩm thực tế: clip (Drive) và/hoặc ảnh dự án theo từng dịch vụ ── */
-function Works({ s }) {
-  const { works } = s;
-  return (
-    <section id="san-pham-thuc-te" className="bg-white section-y" data-nav-theme="light">
-      <Container>
-        <p className="reveal mb-4 eyebrow">Sản phẩm thực tế</p>
-        <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="reveal h-section" style={{ "--reveal-delay": "80ms" }}>
-            {works.title}
-          </h2>
-          <Link
-            href="/san-pham"
-            className="reveal group inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap hover:text-orange-500"
-          >
-            Xem tất cả sản phẩm
-            <Icon
-              name="arrowRight"
-              className="size-4 transition-transform group-hover:translate-x-1"
-            />
-          </Link>
-        </div>
-        {works.clips?.length > 0 && <ClipGrid clips={works.clips} />}
-        {works.photos?.length > 0 && (
-          <div className={cn(works.clips?.length && "mt-12")}>
-            <BentoGallery images={works.photos} name={s.title} />
-          </div>
-        )}
-      </Container>
-    </section>
-  );
-}
-
-/* ── Cho thuê studio: 4 điểm nổi bật — nối liền phần giới thiệu phía trên (cùng nền giấy, chỉ ngăn bằng
-   1 đường kẻ mảnh), không tiêu đề: 4 cột canh giữa, icon nét lớn + tiêu đề + mô tả. Rê chuột: icon chuyển cam. ── */
-function Features({ s }) {
-  return (
-    <section
-      className="bg-paper pb-16 sm:pb-20 lg:pb-24"
-      data-nav-theme="light"
-      aria-label="Điểm nổi bật"
-    >
-      <Container>
-        <ul className="grid gap-12 border-t border-ink/10 pt-14 sm:grid-cols-2 sm:gap-x-10 lg:grid-cols-4 lg:gap-x-12 lg:pt-16">
-          {s.features.map((f, i) => (
-            <li
-              key={f.title}
-              className="reveal group flex flex-col items-center text-center"
-              style={{ "--reveal-delay": `${i * 90}ms` }}
-            >
-              <Icon
-                name={f.icon}
-                className="size-14 text-ink transition-[color,transform] duration-500 group-hover:-translate-y-1 group-hover:text-orange-500"
-                strokeWidth={1.3}
-              />
-              <h3 className="mt-6 text-xl font-bold tracking-tight text-ink sm:text-[1.35rem]">
-                {f.title}
-              </h3>
-              <p className="mt-3 max-w-xs text-center text-[15px] leading-relaxed text-ink-soft">
-                {f.desc}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </Container>
-    </section>
-  );
-}
-
 /* ── Cho thuê studio: "VÉ ĐẶT LỊCH" (mục 6: link bảng giá chi tiết & hình ảnh các room)
    Cuống vé cam: tiêu đề + cam kết (trên) · nút bảng giá chi tiết + hotline (dưới)  |  nét đứt  |
    Thân vé: 2 thẻ room cao bằng cuống — ảnh lớn (bấm → thư mục ảnh room), diện tích, loại phòng,
    2 nút "Đặt lịch" (điền sẵn room vào form) / "Xem ảnh". ── */
-function StudioLinks({ s }) {
+function StudioLinks({ s, contact }) {
   const priceBtn =
     "group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-orange-600 transition hover:bg-navy-950 hover:text-white";
   return (
@@ -447,11 +291,11 @@ function StudioLinks({ s }) {
                 </button>
               )}
               <a
-                href={siteConfig.contact.phoneHref}
+                href={contact.phoneHref}
                 className="inline-flex h-12 items-center gap-2 rounded-full px-5 text-sm font-semibold tracking-wide ring-1 ring-white/40 transition hover:bg-white/15"
               >
                 <Icon name="phone" className="size-4" />
-                {siteConfig.contact.phone}
+                {contact.phone}
               </a>
             </div>
           </div>

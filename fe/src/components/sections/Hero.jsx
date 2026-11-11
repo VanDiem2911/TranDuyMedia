@@ -5,11 +5,14 @@ import { SmartImage as Image, ratioOf } from "@/components/ui/SmartImage";
 import { Icon } from "@/components/icons";
 import { SplitText } from "@/components/fx";
 import { Container } from "@/components/ui";
-import { btsImages } from "@/data/collections";
+import { ImageTools } from "@/components/admin/about/inline-edit";
+import { Pic, T } from "@/components/about/edit-kit";
+import { homeDefaults } from "@/data/home-content";
 import { subscribeScroll } from "@/lib/scroll";
 import { cn, pad } from "@/lib/utils";
 
-const SLIDES = btsImages.slice(0, 4); // 4 ảnh hậu trường: máy quay, ekip, đèn
+const TITLE_CLASS =
+  "mt-6 text-[clamp(2.1rem,min(5.4vw,7.6svh),5.4rem)] h-display leading-[1.3] text-balance text-white text-legible-lg sm:mt-7 short-m:mt-4 short-m:text-[1.9rem] short-d:mt-5";
 const TICK = 6000; // thời gian mỗi ảnh (ms) — khớp với thanh tiến trình
 
 /**
@@ -31,8 +34,11 @@ const heroSizes = (src) => {
  * - Đáy: thanh thông tin thẳng hàng container — chú thích ảnh đang chiếu, tiến trình (bấm được), cuộn xuống.
  * - Parallax: ảnh trôi chậm hơn trang, chữ mờ dần khi cuộn (đồng bộ Lenis).
  */
-export function Hero() {
-  const [idx, setIdx] = useState(0);
+export function Hero({ content = homeDefaults.hero, edit }) {
+  // Ảnh nền hero: nội dung chỉnh được từ trang quản trị (mặc định: 4 ảnh hậu trường)
+  const SLIDES = content.slides.map((s) => ({ src: s.image.src, pos: s.image.pos, alt: s.alt }));
+  const [idxRaw, setIdx] = useState(0);
+  const idx = Math.min(idxRaw, SLIDES.length - 1); // xoá ảnh đang chọn → lùi về ảnh cuối
   const [ready, setReady] = useState(false);
   const [first, setFirst] = useState(false); // đã bắt đầu tải ảnh hero đầu tiên
   const imgRef = useRef(null);
@@ -67,32 +73,34 @@ export function Hero() {
 
   useEffect(
     () =>
-      subscribeScroll(() => {
-        const y = window.scrollY;
-        const vh = window.innerHeight;
-        if (y > vh * 1.2) return;
-        if (imgRef.current)
-          imgRef.current.style.transform = `translate3d(0, ${(y * 0.28).toFixed(1)}px, 0)`;
-        if (textRef.current) {
-          textRef.current.style.transform = `translate3d(0, ${(y * 0.12).toFixed(1)}px, 0)`;
-          textRef.current.style.opacity = String(Math.max(0, 1 - y / (vh * 0.6)));
-        }
-      }),
-    [],
+      edit
+        ? undefined
+        : subscribeScroll(() => {
+            const y = window.scrollY;
+            const vh = window.innerHeight;
+            if (y > vh * 1.2) return;
+            if (imgRef.current)
+              imgRef.current.style.transform = `translate3d(0, ${(y * 0.28).toFixed(1)}px, 0)`;
+            if (textRef.current) {
+              textRef.current.style.transform = `translate3d(0, ${(y * 0.12).toFixed(1)}px, 0)`;
+              textRef.current.style.opacity = String(Math.max(0, 1 - y / (vh * 0.6)));
+            }
+          }),
+    [edit],
   );
 
   // Tự chuyển ảnh; bấm vào thanh tiến trình sẽ đổi idx → effect chạy lại, đếm lại từ đầu
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || edit) return; // đang sửa thì không tự chuyển ảnh
     const t = setTimeout(() => setIdx((v) => (v + 1) % SLIDES.length), TICK);
     return () => clearTimeout(t);
-  }, [ready, idx]);
+  }, [ready, idx, edit, SLIDES.length]);
 
   return (
     <section
       id="top"
       data-nav-theme="dark"
-      className="relative h-(--screen) min-h-[600px] w-full overflow-hidden bg-navy-950 text-white short-m:h-auto short-m:min-h-svh"
+      className="group relative h-(--screen) min-h-[600px] w-full overflow-hidden bg-navy-950 text-white short-m:h-auto short-m:min-h-svh"
     >
       {/* Lớp ngoài: parallax (transform inline). Lớp trong: hiệu ứng mở màn (animation transform).
           Tách 2 lớp vì animation CSS sẽ đè transform inline nếu đặt chung một phần tử. */}
@@ -100,7 +108,7 @@ export function Hero() {
         <div className={cn("absolute inset-0", ready ? "hero-panel" : "opacity-0")}>
           {SLIDES.map((s, i) => (
             <div
-              key={s.src}
+              key={`${s.src}-${i}`}
               className={cn(
                 "absolute inset-0 transition-opacity duration-[1800ms] ease-out",
                 i === idx ? "opacity-100" : "opacity-0",
@@ -109,23 +117,36 @@ export function Hero() {
             >
               {/* Ảnh 1 tải ngay khi không có màn chào, hoặc 0.6s sau khi mở trang nếu có màn chào; ảnh 2–4 chỉ tải
                   khi hero bắt đầu chạy — vẫn sớm hơn lúc hiện (6s) rất nhiều */}
-              {((i === 0 && first) || ready) && (
-                <Image
-                  src={s.src}
-                  alt={i === 0 ? s.alt : ""}
-                  fill
-                  loading="eager"
-                  fetchPriority={i === 0 ? "high" : "low"}
-                  autoSizes={false}
-                  sizes={heroSizes(s.src)}
-                  className={cn("object-cover", i === idx && "animate-kenburns")}
-                  style={{ objectPosition: s.pos }}
-                />
-              )}
+              {((i === 0 && first) || ready) &&
+                (edit ? (
+                  <Pic edit={edit} src={s.src} alt={s.alt} pos={s.pos} className="object-cover" />
+                ) : (
+                  <Image
+                    src={s.src}
+                    alt={i === 0 ? s.alt : ""}
+                    fill
+                    loading="eager"
+                    fetchPriority={i === 0 ? "high" : "low"}
+                    autoSizes={false}
+                    sizes={heroSizes(s.src)}
+                    className={cn("object-cover", i === idx && "animate-kenburns")}
+                    style={{ objectPosition: s.pos }}
+                  />
+                ))}
             </div>
           ))}
         </div>
       </div>
+
+      {edit && (
+        <ImageTools
+          edit={edit}
+          path={`hero.slides.${idx}.image`}
+          altPath={`hero.slides.${idx}.alt`}
+          listPath="hero.slides"
+          index={idx}
+        />
+      )}
 
       {/* Phủ tối: đều toàn khung + đậm dần ở trên (header) và dưới (thanh thông tin) */}
       <div className="pointer-events-none absolute inset-0 bg-navy-950/55" />
@@ -170,27 +191,38 @@ export function Hero() {
               )}
             >
               <span className="hidden h-px w-8 bg-orange-500 sm:block" />
-              Video production
+              <T edit={edit} path="hero.eyebrow.0" value={content.eyebrow[0]} />
               <span className="size-1 rounded-full bg-orange-500" />
-              Studio
+              <T edit={edit} path="hero.eyebrow.1" value={content.eyebrow[1]} />
               <span className="size-1 rounded-full bg-orange-500" />
-              Photography
+              <T edit={edit} path="hero.eyebrow.2" value={content.eyebrow[2]} />
               <span className="hidden h-px w-8 bg-orange-500 sm:block" />
             </p>
 
-            <SplitText
-              as="h1"
-              text="Đối tác gia công video, hình ảnh toàn diện cho doanh nghiệp"
-              accent="toàn diện cho doanh nghiệp"
-              accentClass="text-orange-500"
-              breakBefore="toàn"
-              keep={["Đối tác", "gia công", "hình ảnh", "toàn diện", "doanh nghiệp"]}
-              visible={ready}
-              manual
-              step={55}
-              baseDelay={650}
-              className="mt-6 text-[clamp(2.1rem,min(5.4vw,7.6svh),5.4rem)] h-display leading-[1.3] text-balance text-white text-legible-lg sm:mt-7 short-m:mt-4 short-m:text-[1.9rem] short-d:mt-5"
-            />
+            {edit ? (
+              <h1 className={TITLE_CLASS}>
+                <T edit={edit} path="hero.titleLead" value={content.titleLead} />{" "}
+                <span className="text-orange-500">
+                  <T edit={edit} path="hero.titleAccent" value={content.titleAccent} />
+                </span>
+              </h1>
+            ) : (
+              <SplitText
+                as="h1"
+                text={`${content.titleLead} ${content.titleAccent}`}
+                accent={content.titleAccent}
+                accentClass="text-orange-500"
+                breakBefore={content.titleAccent.split(" ")[0]}
+                keep={["Đối tác", "gia công", "hình ảnh", "toàn diện", "doanh nghiệp"].filter((k) =>
+                  `${content.titleLead} ${content.titleAccent}`.includes(k),
+                )}
+                visible={ready}
+                manual
+                step={55}
+                baseDelay={650}
+                className={TITLE_CLASS}
+              />
+            )}
 
             <p
               className={cn(
@@ -198,8 +230,7 @@ export function Hero() {
                 anim("[animation:fadeUp_1s_1.4s_both]"),
               )}
             >
-              Hơn 10 năm sản xuất video marketing, iTVC, phim doanh nghiệp, chụp ảnh quảng cáo và
-              cho thuê studio.
+              <T edit={edit} path="hero.description" value={content.description} />
             </p>
 
             <div
@@ -213,7 +244,7 @@ export function Hero() {
                 data-showreel
                 className="group relative inline-flex h-12 items-center justify-center gap-3 rounded-full bg-white pl-6 text-sm font-medium text-navy-900 transition hover:bg-paper-100 sm:h-auto sm:py-1.5 sm:pr-1.5 short-m:h-11"
               >
-                Xem showreel 2026
+                <T edit={edit} path="hero.showreelLabel" value={content.showreelLabel} />
                 <span className="absolute right-1.5 flex size-9 items-center justify-center rounded-full bg-orange-500 text-white transition-transform group-hover:scale-110 sm:static">
                   <Icon name="play" className="ml-0.5 size-4" strokeWidth={0} fill="currentColor" />
                 </span>
@@ -223,7 +254,7 @@ export function Hero() {
                 data-booking
                 className="inline-flex h-12 items-center justify-center rounded-full border border-white/40 px-7 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-navy-900 sm:h-auto sm:py-3.5 short-m:h-11"
               >
-                Đặt lịch tư vấn
+                <T edit={edit} path="hero.bookingLabel" value={content.bookingLabel} />
               </button>
             </div>
           </div>
@@ -244,7 +275,7 @@ export function Hero() {
             <div className="flex flex-1 items-center justify-center gap-2 md:flex-none">
               {SLIDES.map((s, i) => (
                 <button
-                  key={s.src}
+                  key={`${s.src}-${i}`}
                   type="button"
                   onClick={() => setIdx(i)}
                   aria-label={`Ảnh ${i + 1}: ${s.alt}`}
@@ -263,6 +294,18 @@ export function Hero() {
                   </span>
                 </button>
               ))}
+              {edit && SLIDES.length < 8 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    edit.addItem("hero.slides");
+                    setIdx(SLIDES.length); // chuyển tới ảnh vừa thêm
+                  }}
+                  className="ml-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[11px] font-semibold tracking-normal text-ink normal-case shadow-md hover:bg-paper"
+                >
+                  + Thêm ảnh nền
+                </button>
+              )}
             </div>
 
             <a

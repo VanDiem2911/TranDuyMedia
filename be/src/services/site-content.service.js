@@ -6,7 +6,8 @@ import { MediaService, mediaService } from "#services/media.service.js";
 /** Mọi ảnh trong cây nội dung (object có `src`) do trang này tải lên Cloudinary → Map<public_id, "image">. */
 function assetsOf(data) {
   const out = new Map();
-  const prefix = `${env.CLOUDINARY_FOLDER}/about/`; // chỉ đụng tệp do trang quản trị tải lên thư mục about/
+  // chỉ đụng tệp do trang quản trị tải lên thư mục about/ hoặc site/ (các trang khác)
+  const prefixes = [`${env.CLOUDINARY_FOLDER}/about/`, `${env.CLOUDINARY_FOLDER}/site/`];
   const walk = (node) => {
     if (Array.isArray(node)) return node.forEach(walk);
     if (!node || typeof node !== "object") return;
@@ -14,7 +15,7 @@ function assetsOf(data) {
     for (const key of ["src", "poster"]) {
       if (typeof node[key] !== "string") continue;
       const id = MediaService.publicIdOf(node[key]);
-      if (id?.startsWith(prefix))
+      if (id && prefixes.some((p) => id.startsWith(p)))
         out.set(id, key === "src" && /\/video\/upload\//.test(node.src) ? "video" : "image");
     }
     Object.values(node).forEach(walk);

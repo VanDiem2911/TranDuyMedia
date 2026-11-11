@@ -6,7 +6,6 @@ import { Icon } from "@/components/icons";
 import { cdn } from "@/lib/cdn";
 import { formatPos, parsePos } from "@/lib/crop";
 import { cn } from "@/lib/utils";
-import { limitOf } from "./about-limits";
 
 /**
  * Sửa trực tiếp trên giao diện trang "Về chúng tôi" (trang quản trị).
@@ -43,7 +42,7 @@ function useRect(ref, active, token) {
 
 export function EditableText({ edit, path }) {
   const value = edit.get(path) ?? "";
-  const max = limitOf(path);
+  const max = edit.limit(path);
   const ref = useRef(null);
   const [initial, setInitial] = useState(value); // nội dung đứng yên trong lúc gõ (trình duyệt tự quản lý chữ đang gõ)
   const [editing, setEditing] = useState(false);
@@ -273,7 +272,18 @@ function PosSlider({ label, value, onChange }) {
  * Nút trên ảnh (cha phải có class `group` + `relative`): Đổi ảnh · Cắt ảnh · Alt text.
  * path = đường dẫn của ảnh (vd. "story.image"); altPath = đường dẫn ô mô tả ảnh (chỉ ảnh có mô tả mới có nút Alt text).
  */
-export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
+export function ImageTools({
+  edit,
+  path,
+  altPath,
+  hrefPath,
+  listPath,
+  index,
+  crop = true,
+  hrefLabel = "Bấm vào thẻ thì mở trang nào?",
+  hrefPlaceholder = "/dich-vu/cho-thue-studio",
+  hrefChip = "Liên kết",
+}) {
   const [open, setOpen] = useState(null); // null | "crop" | "alt" | "href"
   const box = useRef(null);
   const snap = useRef(null);
@@ -341,16 +351,18 @@ export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
     >
       <div
         className={cn(
-          "flex flex-wrap justify-end gap-1.5 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100",
-          open ? "opacity-100" : "opacity-0",
+          "flex flex-wrap justify-end gap-1.5 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100",
+          open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
         )}
       >
         <Chip icon="image" onClick={() => edit.pickImage(path)}>
           Đổi ảnh
         </Chip>
-        <Chip icon="expand" onClick={toggleCrop} active={open === "crop"}>
-          Cắt ảnh
-        </Chip>
+        {crop && (
+          <Chip icon="expand" onClick={toggleCrop} active={open === "crop"}>
+            Cắt ảnh
+          </Chip>
+        )}
         {altPath && (
           <Chip icon="note" onClick={toggleAlt} active={open === "alt"}>
             Alt text
@@ -358,7 +370,7 @@ export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
         )}
         {hrefPath && (
           <Chip icon="external" onClick={toggleHref} active={open === "href"}>
-            Liên kết
+            {hrefChip}
           </Chip>
         )}
         {canRemove && (
@@ -395,7 +407,7 @@ export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
       {open === "href" && (
         <div className="w-72 max-w-[80vw] space-y-2 rounded-2xl bg-white p-3.5 text-left shadow-xl ring-1 ring-ink/10">
           <label className="block text-xs font-semibold text-ink" htmlFor={`href-${hrefPath}`}>
-            Bấm vào thẻ thì mở trang nào?
+            {hrefLabel}
           </label>
           <input
             id={`href-${hrefPath}`}
@@ -403,7 +415,7 @@ export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
             onChange={(e) => setHref(e.target.value.slice(0, 300))}
             onKeyDown={(e) => e.key === "Enter" && saveHref()}
             autoFocus
-            placeholder="/dich-vu/cho-thue-studio"
+            placeholder={hrefPlaceholder}
             aria-invalid={!hrefOk}
             className="field py-2 text-sm text-ink"
           />
@@ -430,13 +442,13 @@ export function ImageTools({ edit, path, altPath, hrefPath, listPath, index }) {
           <textarea
             id={`alt-${path}`}
             value={alt}
-            onChange={(e) => setAlt(e.target.value.slice(0, limitOf(altPath)))}
+            onChange={(e) => setAlt(e.target.value.slice(0, edit.limit(altPath)))}
             rows={3}
             autoFocus
             className="min-h-0 field resize-none py-2 text-sm text-ink"
           />
           <p className="text-[11px] text-ink-muted">
-            Cho người khiếm thị và công cụ tìm kiếm. {alt.length}/{limitOf(altPath)}
+            Cho người khiếm thị và công cụ tìm kiếm. {alt.length}/{edit.limit(altPath)}
           </p>
           <button
             type="button"
@@ -517,9 +529,9 @@ function ModeTab({ active, onSelect, children }) {
 }
 
 /** Nút "Đổi nền banner" + hộp thoại chọn kiểu nền (ảnh trôi / video). */
-export function BannerTools({ edit, columns, banner }) {
+export function BannerTools({ edit, columns, banner, videoEnabled = true }) {
   const [open, setOpen] = useState(false);
-  const mode = banner?.mode ?? "images";
+  const mode = videoEnabled ? (banner?.mode ?? "images") : "images";
   const clip = banner?.video?.src ?? "";
 
   useEffect(() => {
@@ -577,27 +589,29 @@ export function BannerTools({ edit, columns, banner }) {
                 </button>
               </div>
 
-              <div className="px-5 pt-4 sm:px-6">
-                <div
-                  role="tablist"
-                  aria-label="Kiểu nền banner"
-                  className="flex gap-1 rounded-full bg-paper p-1 ring-1 ring-ink/10"
-                >
-                  <ModeTab
-                    active={mode === "images"}
-                    onSelect={() => edit.setText("header.banner.mode", "images")}
+              {videoEnabled && (
+                <div className="px-5 pt-4 sm:px-6">
+                  <div
+                    role="tablist"
+                    aria-label="Kiểu nền banner"
+                    className="flex gap-1 rounded-full bg-paper p-1 ring-1 ring-ink/10"
                   >
-                    Ảnh trôi (18 ảnh)
-                  </ModeTab>
-                  <ModeTab
-                    active={mode === "video"}
-                    onSelect={() => edit.setText("header.banner.mode", "video")}
-                  >
-                    <Icon name="play" className="size-3.5" />
-                    Video
-                  </ModeTab>
+                    <ModeTab
+                      active={mode === "images"}
+                      onSelect={() => edit.setText("header.banner.mode", "images")}
+                    >
+                      Ảnh trôi (18 ảnh)
+                    </ModeTab>
+                    <ModeTab
+                      active={mode === "video"}
+                      onSelect={() => edit.setText("header.banner.mode", "video")}
+                    >
+                      <Icon name="play" className="size-3.5" />
+                      Video
+                    </ModeTab>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="overflow-y-auto p-5 sm:p-6">
                 {mode === "images" ? (

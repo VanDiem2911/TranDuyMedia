@@ -8,15 +8,20 @@ import {
 } from "@/components/about/AboutSections";
 import { Partners, Showreel } from "@/components/sections";
 import { getAbout } from "@/lib/about";
+import { getHome } from "@/lib/home";
 import { createMetadata } from "@/lib/metadata";
+import { getSiteContent } from "@/lib/site";
 
-export const metadata = createMetadata({
-  title: "Về chúng tôi",
-  description:
-    "Trần Duy Media – đối tác gia công video, hình ảnh toàn diện cho doanh nghiệp với hơn 10 năm kinh nghiệm thực chiến: video short, iTVC, phim doanh nghiệp & sự kiện, chụp ảnh quảng cáo và cho thuê studio tại TP.HCM.",
-  path: "/gioi-thieu",
-  image: "/images/bts/bts-05.webp",
-});
+// Tiêu đề + mô tả hiện trên Google / khi chia sẻ link: chỉnh ở trang quản trị (Chân trang, menu & SEO)
+export async function generateMetadata() {
+  const { seo } = await getSiteContent();
+  return createMetadata({
+    title: seo.about.title,
+    description: seo.about.description,
+    path: "/gioi-thieu",
+    image: "/images/bts/bts-05.webp",
+  });
+}
 
 /**
  * Trang Về chúng tôi — bố cục liền mạch, cô đọng (feedback 02/11), nền sáng/tối xen kẽ:
@@ -25,7 +30,7 @@ export const metadata = createMetadata({
  */
 export default async function AboutPage() {
   // Nội dung chỉnh ở trang quản trị (DB) — cache theo thẻ, lưu xong là cập nhật ngay; lỗi → nội dung mặc định
-  const c = await getAbout();
+  const [c, home] = await Promise.all([getAbout(), getHome()]);
   return (
     <>
       <AboutHeader header={c.header} />
@@ -34,8 +39,13 @@ export default async function AboutPage() {
       <Standards standards={c.standards} />
       <Ecosystem ecosystem={c.ecosystem} />
       <AboutValues values={c.values} />
-      <Showreel id="showreel-gioi-thieu" />
-      <Partners />
+      <Showreel
+        id="showreel-gioi-thieu"
+        eyebrow={home.showreel.eyebrow}
+        title={home.showreel.title}
+        description={home.showreel.description}
+      />
+      <Partners content={home.partners} />
     </>
   );
 }

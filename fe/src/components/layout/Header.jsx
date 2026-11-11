@@ -16,7 +16,7 @@ import { cn, lockScroll } from "@/lib/utils";
  * - menu giữa có ô active, CTA kèm vòng tròn mũi tên.
  * - Section nào muốn header tối: đặt data-nav-theme="dark" lên section đó.
  */
-export function Header() {
+export function Header({ site = siteConfig }) {
   const pathname = usePathname();
   // Menu mobile: lưu kèm pathname lúc mở → đổi trang là tự đóng (không cần setState trong effect)
   const [menu, setMenu] = useState({ open: false, path: "" });
@@ -90,7 +90,8 @@ export function Header() {
 
         {/* Desktop: 3 cột logo | menu | nút — menu nằm đúng giữa thanh, không đè 2 bên */}
         <nav aria-label="Điều hướng chính" className="hidden items-center gap-1 lg:flex">
-          {mainNav.map((item) => {
+          {mainNav.map((item, idx) => {
+            const label = site.nav?.[idx] ?? item.label;
             const active = isActive(item.href);
             const linkCls = cn(
               "inline-flex items-center gap-1 rounded-full px-4 py-2 text-[15px] font-semibold tracking-wide transition-all duration-300 xl:px-5",
@@ -110,7 +111,7 @@ export function Header() {
                   aria-current={active ? "page" : undefined}
                   className={linkCls}
                 >
-                  {item.label}
+                  {label}
                 </Link>
               );
             }
@@ -123,7 +124,7 @@ export function Header() {
                   aria-haspopup="true"
                   className={linkCls}
                 >
-                  {item.label}
+                  {label}
                   <Icon
                     name="chevronDown"
                     className="size-3.5 transition-transform duration-300 group-hover/dd:rotate-180 group-has-[:focus-visible]/dd:rotate-180"
@@ -169,7 +170,7 @@ export function Header() {
 
         <div className="flex items-center gap-1.5 justify-self-end sm:gap-2">
           <a
-            href={siteConfig.contact.phoneHref}
+            href={site.contact.phoneHref}
             className={cn(
               "hidden h-9 items-center gap-2 rounded-full px-3 text-[13px] font-medium transition md:flex",
               dark
@@ -178,7 +179,7 @@ export function Header() {
             )}
           >
             <Icon name="phone" className="size-4" />
-            {siteConfig.contact.phone}
+            {site.contact.phone}
           </a>
 
           <button
@@ -249,7 +250,7 @@ export function Header() {
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between py-4 text-2xl font-semibold tracking-tight text-ink"
               >
-                {item.label}
+                {site.nav?.[i] ?? item.label}
                 <Icon
                   name="arrowRight"
                   className={cn(
@@ -290,9 +291,9 @@ export function Header() {
           {/* Kênh mạng xã hội của studio */}
           <ul className="mt-auto mb-5 flex justify-center gap-3">
             {[
-              ["facebook", siteConfig.socials.facebook],
-              ["youtube", siteConfig.socials.youtube],
-              ["tiktok", siteConfig.socials.tiktok],
+              ["facebook", site.socials.facebook],
+              ["youtube", site.socials.youtube],
+              ["tiktok", site.socials.tiktok],
             ].map(([name, href]) => (
               <li key={name}>
                 <a
@@ -309,8 +310,8 @@ export function Header() {
           </ul>
           <p className="text-center text-xs text-ink-muted">
             Hotline:{" "}
-            <a href={siteConfig.contact.phoneHref} className="-my-2 inline-block py-2 text-ink">
-              {siteConfig.contact.phone}
+            <a href={site.contact.phoneHref} className="-my-2 inline-block py-2 text-ink">
+              {site.contact.phone}
             </a>
           </p>
         </nav>

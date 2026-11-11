@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONTENT_KEYS } from "#models/site-content.model.js";
 
 // Điểm giữ lại khi cắt khung (object-position): từ khoá hoặc "x% y%" — giống validator sản phẩm
 const position = z
@@ -126,3 +127,53 @@ export const aboutSchema = z.object({
     ),
   }),
 });
+
+/**
+ * Các trang còn lại (home, services, site, products): cây nội dung tự do nhưng CÓ GIỚI HẠN —
+ * độ sâu, số nút, độ dài chữ, tên khoá, và mọi ô địa chỉ (src, poster, href…) chỉ nhận đường dẫn an toàn.
+ * Hình dạng đầy đủ do website tự gộp với nội dung mặc định nên thiếu / thừa trường không làm vỡ trang.
+ */
+const URL_KEYS = new Set(["src", "poster", "href", "link", "logo", "image", "video", "url"]);
+const SAFE_URL = /^(\/(?!\/)|https:\/\/|mailto:|tel:)\S*$/i;
+const MAX_DEPTH = 8;
+const MAX_NODES = 4000;
+const MAX_TEXT = 3000;
+
+export const treeSchema = z.record(z.string(), z.unknown()).superRefine((root, ctx) => {
+  let nodes = 0;
+  const bad = (path, message) => ctx.addIssue({ code: "custom", path, message });
+  const walk = (node, path, depth) => {
+    if (ctx.issues.length > 5) return;
+    if (++nodes > MAX_NODES) return bad(path, "Nội dung quá lớn");
+    if (depth > MAX_DEPTH) return bad(path, "Nội dung lồng quá sâu");
+    if (node === null || typeof node === "boolean") return;
+    if (typeof node === "number")
+      return Number.isFinite(node) ? undefined : bad(path, "Số không hợp lệ");
+    if (typeof node === "string") {
+      if (node.length > MAX_TEXT) return bad(path, `Chữ tối đa ${MAX_TEXT} ký tự`);
+      const key = String(path[path.length - 1]);
+      if (URL_KEYS.has(key) && node && !SAFE_URL.test(node))
+        return bad(path, "Đường dẫn phải bắt đầu bằng /, https://, mailto: hoặc tel:");
+      return;
+    }
+    if (Array.isArray(node)) {
+      if (node.length > 80) return bad(path, "Danh sách quá dài");
+      return node.forEach((v, i) => walk(v, [...path, i], depth + 1));
+    }
+    if (typeof node === "object") {
+      for (const [k, v] of Object.entries(node)) {
+        if (!/^[A-Za-z0-9_-]{1,40}$/.test(k)) return bad(path, "Tên trường không hợp lệ");
+        walk(v, [...path, k], depth + 1);
+      }
+      return;
+    }
+    bad(path, "Kiểu dữ liệu không hợp lệ");
+  };
+  walk(root, [], 0);
+});
+
+/** Schema kiểm tra theo trang: Về chúng tôi chặt chẽ từng ô; các trang khác dùng cây có giới hạn. */
+export const SCHEMAS = Object.fromEntries(
+  CONTENT_KEYS.map((k) => [k, k === "about" ? aboutSchema : treeSchema]),
+);
+export const contentKeySchema = z.object({ key: z.enum(CONTENT_KEYS, "Trang không tồn tại") });

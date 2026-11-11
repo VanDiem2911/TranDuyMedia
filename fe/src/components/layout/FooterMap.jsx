@@ -15,11 +15,10 @@ const DRAG_PX = 6; // di chuyển quá ngưỡng này = kéo, không phải bấ
  *   Rời chuột khỏi bản đồ thì khoá lại.
  * - Cảm ứng: vuốt = cuộn trang như bình thường (trình duyệt không phát click sau khi vuốt), chạm = mở Maps.
  */
-export function FooterMap() {
+export function FooterMap({ contact = siteConfig.contact }) {
   const [active, setActive] = useState(false);
   const start = useRef(null);
   const dragged = useRef(false);
-  const { contact } = siteConfig;
   const src = `https://www.google.com/maps?q=${encodeURIComponent(contact.mapsQuery)}&z=16&hl=vi&output=embed`;
 
   const onPointerDown = (e) => {
